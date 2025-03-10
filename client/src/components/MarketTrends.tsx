@@ -1,15 +1,14 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { fetchTokenPrices, TokenPrice, formatPriceChange, formatUsdValue } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
-import { ArrowTrendingUp, ArrowTrendingDown } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
 const MarketTrends = () => {
   const [period, setPeriod] = useState("24h");
-  
+
   const { data: tokenPrices, isLoading, error } = useQuery<TokenPrice[]>({
     queryKey: ['/api/prices'],
     refetchInterval: 60000 // Refresh every minute
@@ -31,7 +30,7 @@ const MarketTrends = () => {
               <Skeleton className="h-8 w-12 rounded-md ml-2" />
             </div>
           </div>
-          
+
           <TabsContent value="gainers">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -55,7 +54,7 @@ const MarketTrends = () => {
               ))}
             </div>
           </TabsContent>
-          
+
           <TabsContent value="losers">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -103,7 +102,7 @@ const MarketTrends = () => {
   const topGainers = sortedByChange.filter(token => 
     parseFloat(token.priceChange24h || "0") > 0
   ).slice(0, 6);
-  
+
   const topLosers = [...sortedByChange]
     .filter(token => parseFloat(token.priceChange24h || "0") < 0)
     .reverse()
@@ -149,7 +148,7 @@ const MarketTrends = () => {
             </button>
           </div>
         </div>
-        
+
         <TabsContent value="gainers">
           {topGainers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -174,7 +173,7 @@ const MarketTrends = () => {
                       <div className="text-right">
                         <p className="font-semibold">{formatPrice(token.price)}</p>
                         <p className="text-xs text-green-400 flex items-center justify-end">
-                          <ArrowTrendingUp className="w-3 h-3 mr-1" />
+                          <TrendingUp className="w-3 h-3 mr-1" />
                           {formatPriceChange(token.priceChange24h || "0")}
                         </p>
                       </div>
@@ -190,7 +189,7 @@ const MarketTrends = () => {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="losers">
           {topLosers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -215,7 +214,7 @@ const MarketTrends = () => {
                       <div className="text-right">
                         <p className="font-semibold">{formatPrice(token.price)}</p>
                         <p className="text-xs text-red-400 flex items-center justify-end">
-                          <ArrowTrendingDown className="w-3 h-3 mr-1" />
+                          <TrendingDown className="w-3 h-3 mr-1" />
                           {formatPriceChange(token.priceChange24h || "0")}
                         </p>
                       </div>

@@ -183,37 +183,37 @@ export const executeTrade = async (params: TradeParams): Promise<TradeResponse> 
 
 export const formatTokenAmount = (amount: string | number, decimals: number = 6): string => {
   const parsedAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  
+
   if (isNaN(parsedAmount)) return '0.00';
-  
+
   if (parsedAmount < 0.000001) {
     return '<0.000001';
   }
-  
+
   if (parsedAmount < 1) {
     return parsedAmount.toFixed(Math.min(decimals, 6));
   }
-  
+
   if (parsedAmount < 1000) {
     return parsedAmount.toFixed(Math.min(decimals, 4));
   }
-  
+
   if (parsedAmount < 1000000) {
     return parsedAmount.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
   }
-  
+
   // Return in millions with 2 decimal places
   return (parsedAmount / 1000000).toFixed(2) + 'M';
 };
 
 export const formatUsdValue = (value: string | number): string => {
   const parsedValue = typeof value === 'string' ? parseFloat(value) : value;
-  
+
   if (isNaN(parsedValue)) return '$0.00';
-  
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -224,34 +224,34 @@ export const formatUsdValue = (value: string | number): string => {
 
 export const formatPriceChange = (priceChange: string | number): string => {
   const parsedChange = typeof priceChange === 'string' ? parseFloat(priceChange) : priceChange;
-  
+
   if (isNaN(parsedChange)) return '0.00%';
-  
+
   return (parsedChange >= 0 ? '+' : '') + parsedChange.toFixed(2) + '%';
 };
 
 export const getFormattedTimeAgo = (timestamp: number): string => {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  
+
   if (seconds < 60) {
     return 'just now';
   }
-  
+
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) {
     return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
   }
-  
+
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
     return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
   }
-  
+
   const days = Math.floor(hours / 24);
   if (days < 30) {
     return `${days} day${days !== 1 ? 's' : ''} ago`;
   }
-  
+
   const months = Math.floor(days / 30);
   return `${months} month${months !== 1 ? 's' : ''} ago`;
 };
@@ -281,3 +281,13 @@ export const getTransactionTypeIcon = (type: string): string => {
       return 'ri-funds-line';
   }
 };
+
+// Add formatCurrency at the end of the file
+export function formatCurrency(value: number, currency: string = 'USD', decimals: number = 2): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
