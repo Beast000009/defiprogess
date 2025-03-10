@@ -12,9 +12,18 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import axios from "axios";
 
-// CoinGecko API base URL
+// CoinGecko API base URL and key
 const COINGECKO_API_URL = "https://api.coingecko.com/api/v3";
 const COINGECKO_PRO_API_URL = "https://pro-api.coingecko.com/api/v3";
+const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || "";
+
+// Determine if we should use the pro API
+const USE_PRO_API = !!COINGECKO_API_KEY;
+
+// Function to add API key to URL if it exists
+const addApiKey = (url: string) => {
+  return USE_PRO_API ? `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}` : url;
+};
 
 // API rate limiting management
 const API_RATE_LIMIT = {
@@ -82,7 +91,23 @@ const COINGECKO_ID_MAP: Record<string, string> = {
   'ATOM': 'cosmos',
   'XLM': 'stellar',
   'NEAR': 'near',
-  'ALGO': 'algorand'
+  'ALGO': 'algorand',
+  'FIL': 'filecoin',
+  'AAVE': 'aave',
+  'CAKE': 'pancakeswap-token',
+  'SAND': 'the-sandbox',
+  'MANA': 'decentraland',
+  'ENJ': 'enjincoin',
+  'CRO': 'crypto-com-chain',
+  'GRT': 'the-graph',
+  'SUSHI': 'sushi',
+  'COMP': 'compound-governance-token',
+  'MKR': 'maker',
+  'YFI': 'yearn-finance',
+  'SNX': 'synthetix-network-token',
+  'BAT': 'basic-attention-token',
+  'CHZ': 'chiliz',
+  '1INCH': '1inch'
 };
 
 // Utility to handle API errors
