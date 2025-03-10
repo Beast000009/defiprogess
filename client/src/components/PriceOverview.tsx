@@ -219,42 +219,46 @@ const PriceOverview = () => {
             </TabsContent>
             
             <TabsContent value="cards">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mt-4">
                 {sortedTokens.slice(0, 8).map((token: TokenPrice) => (
-                  <div key={token.id} className="bg-neutral-700 rounded-xl p-4 hover:border-primary-light border border-transparent transition-all">
-                    <div className="flex items-center mb-3">
-                      <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden mr-2">
-                        <img src={token.logoUrl} alt={token.symbol} className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-medium">{token.name}</h3>
-                          <span className="text-xs text-neutral-300">{token.symbol}</span>
+                  <div key={token.id} className="bg-neutral-700 rounded-xl p-4 hover:bg-neutral-700/80 border border-neutral-600/50 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center">
+                        <div className="w-9 h-9 rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden mr-2">
+                          <img src={token.logoUrl} alt={token.symbol} className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{token.symbol}</div>
+                          <div className="text-xs text-neutral-400">{token.name}</div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-end justify-between">
-                      <div className="font-mono font-medium text-xl">
-                        ${parseFloat(token.price).toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 6 
-                        })}
-                      </div>
-                      <div className={`flex items-center text-sm ${parseFloat(token.priceChange24h) >= 0 ? 'text-success' : 'text-error'}`}>
+                      <div className={`flex items-center px-2 py-1 rounded ${
+                          parseFloat(token.priceChange24h) >= 0 
+                            ? 'bg-green-500/10 text-green-500' 
+                            : 'bg-red-500/10 text-red-500'
+                        }`}>
                         {parseFloat(token.priceChange24h) >= 0 ? 
-                          <ChevronUp className="mr-1 w-4 h-4" /> : 
-                          <ChevronDown className="mr-1 w-4 h-4" />
+                          <ChevronUp className="mr-1 w-3 h-3" /> : 
+                          <ChevronDown className="mr-1 w-3 h-3" />
                         }
-                        <span>{formatPriceChange(token.priceChange24h)}</span>
+                        <span className="text-xs font-medium">{formatPriceChange(token.priceChange24h)}</span>
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-neutral-600 grid grid-cols-2 gap-2 text-xs">
+                    
+                    <div className="font-mono font-medium text-lg mb-3">
+                      ${parseFloat(token.price).toLocaleString(undefined, { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 6 
+                      })}
+                    </div>
+                    
+                    <div className="flex justify-between text-xs border-t border-neutral-600/50 pt-3">
                       <div>
-                        <span className="text-neutral-400">24h Vol:</span>
+                        <div className="text-neutral-400 mb-1">24h Volume</div>
                         <div className="font-medium">{formatUsdValue(token.volume24h || "0")}</div>
                       </div>
-                      <div>
-                        <span className="text-neutral-400">Market Cap:</span>
+                      <div className="text-right">
+                        <div className="text-neutral-400 mb-1">Market Cap</div>
                         <div className="font-medium">{formatUsdValue(token.marketCap || "0")}</div>
                       </div>
                     </div>
