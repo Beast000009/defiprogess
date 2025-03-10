@@ -17,6 +17,12 @@ export interface TokenPrice {
   logoUrl: string;
   price: string;
   priceChange24h: string;
+  volume24h?: string;
+  marketCap?: string;
+  rank?: number;
+  supply?: string;
+  ath?: string;
+  athChangePercentage?: string;
 }
 
 export interface PortfolioAsset {

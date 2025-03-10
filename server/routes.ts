@@ -163,7 +163,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 tokenId: token.id,
                 price: livePrice.price,
                 priceChange24h: livePrice.priceChange24h,
-                volume24h: livePrice.volume24h || null
+                volume24h: livePrice.volume24h || null,
+                marketCap: livePrice.marketCap || null,
+                rank: null,
+                supply: null,
+                ath: null,
+                athChangePercentage: null
               });
             }
             

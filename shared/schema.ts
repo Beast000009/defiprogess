@@ -51,6 +51,11 @@ export const tokenPrices = pgTable("token_prices", {
   price: decimal("price", { precision: 38, scale: 18 }).notNull(),
   priceChange24h: decimal("price_change_24h", { precision: 10, scale: 2 }),
   volume24h: decimal("volume_24h", { precision: 38, scale: 18 }),
+  marketCap: decimal("market_cap", { precision: 38, scale: 18 }),
+  rank: integer("rank"),
+  supply: decimal("supply", { precision: 38, scale: 18 }),
+  ath: decimal("ath", { precision: 38, scale: 18 }),
+  athChangePercentage: decimal("ath_change_percentage", { precision: 10, scale: 2 }),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -95,6 +100,11 @@ export const insertTokenPriceSchema = createInsertSchema(tokenPrices).pick({
   price: true,
   priceChange24h: true,
   volume24h: true,
+  marketCap: true,
+  rank: true,
+  supply: true,
+  ath: true,
+  athChangePercentage: true,
 });
 
 // Types
