@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
+import { fetchTokenPrices } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, ArrowDown, Clock, Calendar } from 'lucide-react';
 
 interface PriceChartProps {
   tokenSymbol?: string;
@@ -58,7 +58,7 @@ const generateChartData = (basePrice: number, timeRange: string) => {
 };
 
 const PriceChart = ({ tokenSymbol = 'ETH', baseTokenSymbol = 'USDT' }: PriceChartProps) => {
-  const [timeRange, setTimeRange] = useState('1D');
+  const [timeRange, setTimeRange] = useState('1H');
   
   const { data: tokenPrices, isLoading } = useQuery<any[]>({
     queryKey: ['/api/prices'],
@@ -94,49 +94,39 @@ const PriceChart = ({ tokenSymbol = 'ETH', baseTokenSymbol = 'USDT' }: PriceChar
   // Generate chart data
   const chartData = generateChartData(basePrice, timeRange);
   
-  // Calculate price difference for this time period
+  // Calculate price difference
   const startPrice = chartData[0].price;
   const endPrice = chartData[chartData.length - 1].price;
   const priceDiff = endPrice - startPrice;
   const percentDiff = ((priceDiff / startPrice) * 100).toFixed(2);
-  const isPriceUp = priceDiff >= 0;
   
   return (
-    <div className="bg-neutral-800 rounded-xl p-5 border border-neutral-700">
-      <div className="flex flex-wrap items-center justify-between mb-5">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center">
-            <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden mr-3">
+    <div className="bg-neutral-800 rounded-xl p-4 border border-neutral-700">
+      <div className="flex flex-wrap items-center justify-between mb-4">
+        <div className="flex items-center">
+          <div className="flex items-center mr-4">
+            <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden mr-2">
               <img 
                 src={selectedToken?.logoUrl || `https://cryptologos.cc/logos/${tokenSymbol.toLowerCase()}-${tokenSymbol.toLowerCase()}-logo.svg`} 
                 alt={tokenSymbol} 
-                className="w-6 h-6" 
+                className="w-5 h-5" 
               />
             </div>
-            <div>
-              <h3 className="font-medium text-lg">{tokenSymbol}/{baseTokenSymbol}</h3>
-              <span className="text-xs text-neutral-400">{selectedToken?.name || "Ethereum"}</span>
-            </div>
+            <h3 className="font-medium text-lg">{tokenSymbol}/{baseTokenSymbol}</h3>
           </div>
-          
-          <div className="bg-neutral-700/40 h-10 w-px mx-1"></div>
-          
           <div className="flex flex-col">
             <span className="font-mono font-medium text-xl">${basePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</span>
-            <span className={`text-xs flex items-center ${priceChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {priceChange >= 0 ? <ArrowUp className="mr-1 h-3 w-3" /> : <ArrowDown className="mr-1 h-3 w-3" />}
-              <span>{priceChange >= 0 ? '+' : ''}{priceChange}% (24h)</span>
+            <span className={`text-xs flex items-center ${priceChange >= 0 ? 'text-success' : 'text-error'}`}>
+              <i className={`${priceChange >= 0 ? 'ri-arrow-up-line' : 'ri-arrow-down-line'} mr-1`}></i>
+              <span>{priceChange >= 0 ? '+' : ''}{priceChange}%</span>
             </span>
           </div>
         </div>
-        
-        <div className="flex space-x-1 mt-3 sm:mt-0">
+        <div className="flex space-x-1 mt-2 sm:mt-0">
           {['1H', '1D', '1W', '1M', '1Y'].map((range) => (
             <button 
               key={range}
-              className={`px-3 py-1.5 text-sm rounded-md font-medium ${timeRange === range 
-                ? 'bg-primary/20 text-primary border border-primary/30' 
-                : 'hover:bg-neutral-700/70 border border-transparent'}`}
+              className={`px-3 py-1.5 text-sm rounded-lg ${timeRange === range ? 'bg-primary bg-opacity-20 text-primary-light' : 'hover:bg-neutral-700'}`}
               onClick={() => setTimeRange(range)}
             >
               {range}
@@ -145,28 +135,13 @@ const PriceChart = ({ tokenSymbol = 'ETH', baseTokenSymbol = 'USDT' }: PriceChar
         </div>
       </div>
       
-      <div className="mt-5 mb-3 flex items-center justify-between">
-        <div className="flex items-center">
-          <div className={`flex items-center text-sm font-medium ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
-            {isPriceUp ? <ArrowUp className="mr-1 h-4 w-4" /> : <ArrowDown className="mr-1 h-4 w-4" />}
-            <span>{isPriceUp ? '+' : ''}{percentDiff}%</span>
-          </div>
-          <span className="text-neutral-400 mx-2 text-sm">in {timeRange}</span>
-        </div>
-        
-        <div className="flex items-center text-xs text-neutral-400">
-          <Clock className="h-3 w-3 mr-1" />
-          <span>Last updated: {new Date().toLocaleTimeString()}</span>
-        </div>
-      </div>
-      
       <div className="chart-container h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={isPriceUp ? "hsl(var(--success))" : "hsl(var(--destructive))"} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={isPriceUp ? "hsl(var(--success))" : "hsl(var(--destructive))"} stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis dataKey="time" hide />
@@ -176,25 +151,13 @@ const PriceChart = ({ tokenSymbol = 'ETH', baseTokenSymbol = 'USDT' }: PriceChar
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   try {
-                    // Safe handling of the value regardless of its type
-                    const payloadValue = payload[0]?.value;
-                    const numericValue = typeof payloadValue === 'number' 
-                      ? payloadValue 
-                      : typeof payloadValue === 'string' 
-                        ? parseFloat(payloadValue)
-                        : 0;
-                    
                     return (
                       <div className="bg-neutral-800 border border-neutral-700 rounded-md p-2 shadow-lg">
-                        <p className="font-mono">${numericValue.toFixed(2)}</p>
+                        <p className="font-mono">${Number(payload[0].value).toFixed(2)}</p>
                       </div>
                     );
-                  } catch (e) {
-                    return (
-                      <div className="bg-neutral-800 border border-neutral-700 rounded-md p-2 shadow-lg">
-                        <p className="font-mono">$0.00</p>
-                      </div>
-                    );
+                  } catch {
+                    return null;
                   }
                 }
                 return null;
@@ -203,7 +166,7 @@ const PriceChart = ({ tokenSymbol = 'ETH', baseTokenSymbol = 'USDT' }: PriceChar
             <Area 
               type="monotone" 
               dataKey="price" 
-              stroke={isPriceUp ? "hsl(var(--success))" : "hsl(var(--destructive))"} 
+              stroke="hsl(var(--primary))" 
               strokeWidth={2}
               fillOpacity={1} 
               fill="url(#colorPrice)" 
