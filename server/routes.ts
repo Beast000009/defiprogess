@@ -209,11 +209,11 @@ const getTokenPriceFromCoinGecko = async (tokenSymbol: string): Promise<{
         // Convert token symbol to CoinGecko ID
         const coinId = COINGECKO_ID_MAP[tokenSymbol] || tokenSymbol.toLowerCase();
 
-        // Use the Pro API URL
-        const apiUrl = "https://pro-api.coingecko.com/api/v3";
+        // Use the Demo API format
+        const apiUrl = "https://api.coingecko.com/api/v3";
 
-        // Build the request URL with API key as query parameter (using standard format with x-cg-pro-api-key)
-        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true&x-cg-pro-api-key=${COINGECKO_API_KEY}`;
+        // Build the request URL with demo API key format
+        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true&x_cg_demo_api_key=${COINGECKO_API_KEY}`;
 
         try {
           // Try to get data from API (API key is in URL query parameter)
@@ -307,13 +307,18 @@ const getTrendingCoins = async () => {
   return new Promise((resolve, reject) => {
     const fetchTrending = async () => {
       try {
-        // Use the Pro API URL
-        const apiUrl = "https://pro-api.coingecko.com/api/v3";
+        // Use the public CoinGecko API with demo key
+        const apiUrl = "https://api.coingecko.com/api/v3";
 
-        // Build the request URL with API key as query parameter (using standard format with x-cg-pro-api-key)
-        let url = `${apiUrl}/search/trending?x-cg-pro-api-key=${COINGECKO_API_KEY}`;
+        // Build the request URL with Demo API key format
+        let url = `${apiUrl}/search/trending?x_cg_demo_api_key=${COINGECKO_API_KEY}`;
+        
+        // Set headers with API key for additional authentication method
+        const headers = {
+          'x-cg-demo-api-key': COINGECKO_API_KEY
+        };
 
-        const response = await axios.get(url);
+        const response = await axios.get(url, { headers });
         const trendingCoins = response.data.coins.map((coin: any) => ({
           id: coin.item.id,
           name: coin.item.name,
@@ -380,13 +385,18 @@ const getGlobalMarketData = async () => {
   return new Promise((resolve, reject) => {
     const fetchGlobalData = async () => {
       try {
-        // Use the Pro API URL
-        const apiUrl = "https://pro-api.coingecko.com/api/v3";
+        // Use the public CoinGecko API with demo key
+        const apiUrl = "https://api.coingecko.com/api/v3";
 
-        // Build the request URL with API key as query parameter (using standard format with x-cg-pro-api-key)
-        let url = `${apiUrl}/global?x-cg-pro-api-key=${COINGECKO_API_KEY}`;
+        // Build the request URL with Demo API key format
+        let url = `${apiUrl}/global?x_cg_demo_api_key=${COINGECKO_API_KEY}`;
+        
+        // Set headers with API key for additional authentication method
+        const headers = {
+          'x-cg-demo-api-key': COINGECKO_API_KEY
+        };
 
-        const response = await axios.get(url);
+        const response = await axios.get(url, { headers });
         const data = response.data.data;
 
         resolve({
