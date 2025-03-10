@@ -20,6 +20,32 @@ const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || "";
 // Determine if we should use the pro API
 const USE_PRO_API = !!COINGECKO_API_KEY;
 
+// Map of coin symbols to CoinGecko IDs
+const COINGECKO_ID_MAPPING: Record<string, string> = {
+  "BTC": "bitcoin",
+  "ETH": "ethereum",
+  "USDT": "tether",
+  "BNB": "binancecoin",
+  "SOL": "solana",
+  "XRP": "ripple",
+  "ADA": "cardano",
+  "DOGE": "dogecoin",
+  "SHIB": "shiba-inu",
+  "TRX": "tron",
+  "AVAX": "avalanche-2",
+  "MATIC": "matic-network",
+  "DOT": "polkadot",
+  "LTC": "litecoin",
+  "UNI": "uniswap",
+  "LINK": "chainlink",
+  "ATOM": "cosmos",
+  "XLM": "stellar",
+  "FIL": "filecoin",
+  "AAVE": "aave",
+  "ALGO": "algorand",
+  "CAKE": "pancakeswap-token"
+};
+
 // Function to add API key to URL if it exists
 const addApiKey = (url: string) => {
   return USE_PRO_API ? `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}` : url;
@@ -153,10 +179,19 @@ const getTokenPrice = async (tokenSymbol: string): Promise<{
         // Convert token symbol to CoinGecko ID
         const coinId = COINGECKO_ID_MAP[tokenSymbol] || tokenSymbol.toLowerCase();
         
+        // Select API URL based on whether we have a pro key
+        const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+        
+        // Build the request URL
+        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true`;
+        
+        // Add API key if using pro API
+        if (USE_PRO_API) {
+          url = addApiKey(url);
+        }
+        
         // Try to get data from API
-        const response = await axios.get(
-          `${COINGECKO_API_URL}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true`
-        );
+        const response = await axios.get(url);
         
         if (!response.data || !response.data[coinId]) {
           throw new Error(`Price data not found for ${tokenSymbol}`);
@@ -227,7 +262,18 @@ const getTrendingCoins = async () => {
   return new Promise((resolve, reject) => {
     const fetchTrending = async () => {
       try {
-        const response = await axios.get(`${COINGECKO_API_URL}/search/trending`);
+        // Select API URL based on whether we have a pro key
+        const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+        
+        // Build the request URL
+        let url = `${apiUrl}/search/trending`;
+        
+        // Add API key if using pro API
+        if (USE_PRO_API) {
+          url = addApiKey(url);
+        }
+        
+        const response = await axios.get(url);
         const trendingCoins = response.data.coins.map((coin: any) => ({
           id: coin.item.id,
           name: coin.item.name,
@@ -294,7 +340,18 @@ const getGlobalMarketData = async () => {
   return new Promise((resolve, reject) => {
     const fetchGlobalData = async () => {
       try {
-        const response = await axios.get(`${COINGECKO_API_URL}/global`);
+        // Select API URL based on whether we have a pro key
+        const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+        
+        // Build the request URL
+        let url = `${apiUrl}/global`;
+        
+        // Add API key if using pro API
+        if (USE_PRO_API) {
+          url = addApiKey(url);
+        }
+        
+        const response = await axios.get(url);
         const data = response.data.data;
         
         resolve({
@@ -467,9 +524,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const coinId = COINGECKO_ID_MAP[id.toUpperCase()] || id.toLowerCase();
       
-      const response = await axios.get(
-        `${COINGECKO_API_URL}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
-      );
+      // Select API URL based on whether we have a pro key
+      const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+      
+      // Build the request URL
+      let url = `${apiUrl}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`;
+      
+      // Add API key if using pro API
+      if (USE_PRO_API) {
+        url = addApiKey(url);
+      }
+      
+      const response = await axios.get(url);
       
       const data = response.data;
       
@@ -514,9 +580,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { days = 7 } = req.query;
       const coinId = COINGECKO_ID_MAP[id.toUpperCase()] || id.toLowerCase();
       
-      const response = await axios.get(
-        `${COINGECKO_API_URL}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`
-      );
+      // Select API URL based on whether we have a pro key
+      const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+      
+      // Build the request URL
+      let url = `${apiUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`;
+      
+      // Add API key if using pro API
+      if (USE_PRO_API) {
+        url = addApiKey(url);
+      }
+      
+      const response = await axios.get(url);
       
       const { prices, market_caps, total_volumes } = response.data;
       

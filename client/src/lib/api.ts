@@ -130,6 +130,13 @@ export interface TradeResponse {
   networkFee: string;
 }
 
+// Chart Data interface
+export interface ChartData {
+  prices: Array<[number, number]>; // [timestamp, price]
+  marketCaps: Array<[number, number]>; // [timestamp, market_cap]
+  totalVolumes: Array<[number, number]>; // [timestamp, volume]
+}
+
 // API Functions
 
 export const fetchTokens = async (): Promise<Token[]> => {
@@ -139,6 +146,11 @@ export const fetchTokens = async (): Promise<Token[]> => {
 
 export const fetchTokenPrices = async (): Promise<TokenPrice[]> => {
   const res = await apiRequest("GET", "/api/prices");
+  return res.json();
+};
+
+export const fetchChartData = async (coinSymbol: string, days: string = '1'): Promise<ChartData> => {
+  const res = await apiRequest("GET", `/api/coins/${coinSymbol}/chart?days=${days}`);
   return res.json();
 };
 
