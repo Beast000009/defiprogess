@@ -212,17 +212,12 @@ const getTokenPriceFromCoinGecko = async (tokenSymbol: string): Promise<{
         // Use the Pro API URL
         const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-        // Build the request URL (without API key in query params)
-        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true`;
-
-        // Set headers with API key
-        const headers = {
-          'x-cg-pro-api-key': COINGECKO_API_KEY
-        };
+        // Build the request URL with API key as query parameter
+        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true&x_cg_pro_api_key=${COINGECKO_API_KEY}`;
 
         try {
-          // Try to get data from API with headers
-          const response = await axios.get(url, { headers });
+          // Try to get data from API (API key is in URL query parameter)
+          const response = await axios.get(url);
 
           if (!response.data || !response.data[coinId]) {
             throw new Error(`Price data not found for ${tokenSymbol}`);
@@ -315,15 +310,10 @@ const getTrendingCoins = async () => {
         // Use the Pro API URL
         const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-        // Build the request URL
-        let url = `${apiUrl}/search/trending`;
+        // Build the request URL with API key as query parameter
+        let url = `${apiUrl}/search/trending?x_cg_pro_api_key=${COINGECKO_API_KEY}`;
 
-        // Set headers with API key
-        const headers = {
-          'x-cg-pro-api-key': COINGECKO_API_KEY
-        };
-
-        const response = await axios.get(url, { headers });
+        const response = await axios.get(url);
         const trendingCoins = response.data.coins.map((coin: any) => ({
           id: coin.item.id,
           name: coin.item.name,
@@ -393,15 +383,10 @@ const getGlobalMarketData = async () => {
         // Use the Pro API URL
         const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-        // Build the request URL
-        let url = `${apiUrl}/global`;
+        // Build the request URL with API key as query parameter
+        let url = `${apiUrl}/global?x_cg_pro_api_key=${COINGECKO_API_KEY}`;
 
-        // Set headers with API key
-        const headers = {
-          'x-cg-pro-api-key': COINGECKO_API_KEY
-        };
-
-        const response = await axios.get(url, { headers });
+        const response = await axios.get(url);
         const data = response.data.data;
 
         resolve({
@@ -577,15 +562,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the Pro API URL
       const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-      // Build the request URL
-      let url = `${apiUrl}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`;
+      // Build the request URL with API key as query parameter
+      let url = `${apiUrl}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${COINGECKO_API_KEY}`;
 
-      // Set headers with API key
-      const headers = {
-        'x-cg-pro-api-key': COINGECKO_API_KEY
-      };
-
-      const response = await axios.get(url, { headers });
+      const response = await axios.get(url);
 
       const data = response.data;
 
@@ -633,15 +613,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the Pro API URL
       const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-      // Build the request URL
-      let url = `${apiUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`;
+      // Build the request URL with API key as query parameter
+      let url = `${apiUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&x_cg_pro_api_key=${COINGECKO_API_KEY}`;
 
-      // Set headers with API key
-      const headers = {
-        'x-cg-pro-api-key': COINGECKO_API_KEY
-      };
-
-      const response = await axios.get(url, { headers });
+      const response = await axios.get(url);
 
       const { prices, market_caps, total_volumes } = response.data;
 
