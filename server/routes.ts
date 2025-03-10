@@ -212,8 +212,8 @@ const getTokenPriceFromCoinGecko = async (tokenSymbol: string): Promise<{
         // Use the Pro API URL
         const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-        // Build the request URL with API key as query parameter
-        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true&x_cg_pro_api_key=${COINGECKO_API_KEY}`;
+        // Build the request URL with API key as query parameter (using standard format with x-cg-pro-api-key)
+        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true&x-cg-pro-api-key=${COINGECKO_API_KEY}`;
 
         try {
           // Try to get data from API (API key is in URL query parameter)
@@ -310,8 +310,8 @@ const getTrendingCoins = async () => {
         // Use the Pro API URL
         const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-        // Build the request URL with API key as query parameter
-        let url = `${apiUrl}/search/trending?x_cg_pro_api_key=${COINGECKO_API_KEY}`;
+        // Build the request URL with API key as query parameter (using standard format with x-cg-pro-api-key)
+        let url = `${apiUrl}/search/trending?x-cg-pro-api-key=${COINGECKO_API_KEY}`;
 
         const response = await axios.get(url);
         const trendingCoins = response.data.coins.map((coin: any) => ({
@@ -383,8 +383,8 @@ const getGlobalMarketData = async () => {
         // Use the Pro API URL
         const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-        // Build the request URL with API key as query parameter
-        let url = `${apiUrl}/global?x_cg_pro_api_key=${COINGECKO_API_KEY}`;
+        // Build the request URL with API key as query parameter (using standard format with x-cg-pro-api-key)
+        let url = `${apiUrl}/global?x-cg-pro-api-key=${COINGECKO_API_KEY}`;
 
         const response = await axios.get(url);
         const data = response.data.data;
@@ -562,8 +562,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the Pro API URL
       const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-      // Build the request URL with API key as query parameter
-      let url = `${apiUrl}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${COINGECKO_API_KEY}`;
+      // Build the request URL with API key as query parameter (using standard format with x-cg-pro-api-key)
+      let url = `${apiUrl}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x-cg-pro-api-key=${COINGECKO_API_KEY}`;
 
       const response = await axios.get(url);
 
@@ -613,8 +613,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the Pro API URL
       const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-      // Build the request URL with API key as query parameter
-      let url = `${apiUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&x_cg_pro_api_key=${COINGECKO_API_KEY}`;
+      // Build the request URL with API key as query parameter (using standard format with x-cg-pro-api-key)
+      let url = `${apiUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&x-cg-pro-api-key=${COINGECKO_API_KEY}`;
 
       const response = await axios.get(url);
 
