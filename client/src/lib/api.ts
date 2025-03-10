@@ -1,4 +1,31 @@
-import { apiRequest } from "./queryClient";
+import axios from 'axios';
+
+// Create an axios instance with default configuration
+const api = axios.create({
+  baseURL: '/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Handle API error responses
+const handleApiError = (error: any) => {
+  if (error.response) {
+    // Server responded with a status code that falls out of the range of 2xx
+    if (error.response.status === 429) {
+      throw new Error('Rate limit exceeded. Please try again later.');
+    } else {
+      throw new Error(error.response.data?.message || 'Server error occurred');
+    }
+  } else if (error.request) {
+    // The request was made but no response was received
+    throw new Error('No response received from server. Please check your connection.');
+  } else {
+    // Something happened in setting up the request that triggered an Error
+    throw new Error(error.message || 'An unexpected error occurred');
+  }
+};
 
 export interface Token {
   id: number;
@@ -140,73 +167,108 @@ export interface ChartData {
 // API Functions
 
 export const fetchTokens = async (): Promise<Token[]> => {
-  const res = await apiRequest("GET", "/api/tokens");
-  return res.json();
+  try {
+    const response = await api.get("/api/tokens");
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 export const fetchTokenPrices = async (): Promise<TokenPrice[]> => {
-  const res = await apiRequest("GET", "/api/prices");
-  return res.json();
+  try {
+    const response = await api.get('/prices');
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 export const fetchChartData = async (coinSymbol: string, days: string = '1'): Promise<ChartData> => {
-  const res = await apiRequest("GET", `/api/coins/${coinSymbol}/chart?days=${days}`);
-  return res.json();
+  try {
+    const response = await api.get(`/api/coins/${coinSymbol}/chart?days=${days}`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 export const fetchPortfolio = async (walletAddress: string): Promise<Portfolio> => {
-  const res = await apiRequest("GET", `/api/portfolio/${walletAddress}`);
-  return res.json();
+  try {
+    const response = await api.get(`/portfolio/${walletAddress}`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 export const fetchTransactions = async (walletAddress: string): Promise<Transaction[]> => {
-  const res = await apiRequest("GET", `/api/transactions/${walletAddress}`);
-  return res.json();
+  try {
+    const response = await api.get(`/transactions/${walletAddress}`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 export const fetchGasPrice = async (): Promise<GasPrice> => {
-  const res = await apiRequest("GET", "/api/gas-price");
-  return res.json();
+  try {
+    const response = await api.get('/gas-price');
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 export const swapTokens = async (params: SwapParams): Promise<SwapResponse> => {
-  const res = await apiRequest("POST", "/api/swap", params);
-  return res.json();
+  try {
+    const response = await api.post('/swap', params);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 export const executeTrade = async (params: TradeParams): Promise<TradeResponse> => {
-  const res = await apiRequest("POST", "/api/trade", params);
-  return res.json();
+  try {
+    const response = await api.post('/trade', params);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 // Utility functions for working with token amounts
 
-export const formatTokenAmount = (amount: string | number, decimals: number = 6): string => {
-  const parsedAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+export const formatTokenAmount = (amount: string | number, decimals = 6): string => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '0';
 
-  if (isNaN(parsedAmount)) return '0.00';
-
-  if (parsedAmount < 0.000001) {
-    return '<0.000001';
+  if (num < 0.000001) {
+    return num.toExponential(2);
   }
 
-  if (parsedAmount < 1) {
-    return parsedAmount.toFixed(Math.min(decimals, 6));
+  if (num < 0.01) {
+    return num.toFixed(6);
   }
 
-  if (parsedAmount < 1000) {
-    return parsedAmount.toFixed(Math.min(decimals, 4));
+  if (num < 1) {
+    return num.toFixed(4);
   }
 
-  if (parsedAmount < 1000000) {
-    return parsedAmount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+  if (num < 1000) {
+    return num.toFixed(2);
   }
 
-  // Return in millions with 2 decimal places
-  return (parsedAmount / 1000000).toFixed(2) + 'M';
+  if (num < 1000000) {
+    return (num / 1000).toFixed(2) + 'K';
+  }
+
+  if (num < 1000000000) {
+    return (num / 1000000).toFixed(2) + 'M';
+  }
+
+  return (num / 1000000000).toFixed(2) + 'B';
 };
 
 export const formatUsdValue = (value: string | number): string => {
@@ -291,3 +353,39 @@ export function formatCurrency(value: number, currency: string = 'USD', decimals
     maximumFractionDigits: decimals,
   }).format(value);
 }
+
+export const fetchGlobalMarketData = async () => {
+  try {
+    const response = await api.get('/market/global');
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const fetchTrendingCoins = async () => {
+  try {
+    const response = await api.get('/trending');
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const fetchCoinDetails = async (coinId: string) => {
+  try {
+    const response = await api.get(`/coins/${coinId}`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+export const fetchCoinChartData = async (coinId: string, days = 7) => {
+  try {
+    const response = await api.get(`/coins/${coinId}/chart?days=${days}`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
