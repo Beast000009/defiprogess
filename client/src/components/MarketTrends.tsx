@@ -1,23 +1,12 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchTokenPrices } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
-import { ArrowTrendingUp, ArrowTrendingDown } from "lucide-react";
-
-interface TokenPrice {
-  id: number;
-  symbol: string;
-  name: string;
-  logoUrl: string;
-  price: string;
-  priceChange24h: string;
-  volume24h: string;
-  marketCap: string;
-}
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { TokenPrice } from "@/lib/api";
 
 const MarketTrends = () => {
   const [period, setPeriod] = useState("24h");
@@ -173,17 +162,23 @@ const MarketTrends = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {gainers.length > 0 ? (
               gainers.map((token) => (
-                <Card key={token.id} className="p-4 hover:bg-neutral-800/50 transition-colors">
+                <Card key={token.id} className="p-4">
                   <div className="flex items-center">
-                    <img src={token.logoUrl} alt={token.name} className="w-8 h-8 rounded-full" />
+                    <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden">
+                      {token.logoUrl ? (
+                        <img src={token.logoUrl} alt={token.name} className="w-6 h-6" />
+                      ) : (
+                        <span className="text-xs font-bold">{token.symbol.substring(0, 2)}</span>
+                      )}
+                    </div>
                     <div className="ml-3 flex-1">
                       <div className="font-medium">{token.symbol}</div>
-                      <div className="text-sm text-neutral-400">{token.name}</div>
+                      <div className="text-xs text-neutral-400">{token.name}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-medium">{formatCurrency(token.price)}</div>
-                      <div className="text-sm text-green-500 flex items-center justify-end">
-                        <ArrowTrendingUp className="w-3 h-3 mr-1" />
+                      <div className="font-mono">{formatCurrency(token.price)}</div>
+                      <div className="text-xs text-success flex items-center justify-end">
+                        <ArrowUpCircle className="h-3 w-3 mr-1" />
                         {formatPercentage(token.priceChange24h)}
                       </div>
                     </div>
@@ -191,7 +186,7 @@ const MarketTrends = () => {
                 </Card>
               ))
             ) : (
-              <div className="col-span-3 text-center py-8 text-neutral-500">
+              <div className="col-span-3 p-4 text-center text-neutral-400">
                 No gainers found in the current period
               </div>
             )}
@@ -201,17 +196,23 @@ const MarketTrends = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {losers.length > 0 ? (
               losers.map((token) => (
-                <Card key={token.id} className="p-4 hover:bg-neutral-800/50 transition-colors">
+                <Card key={token.id} className="p-4">
                   <div className="flex items-center">
-                    <img src={token.logoUrl} alt={token.name} className="w-8 h-8 rounded-full" />
+                    <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden">
+                      {token.logoUrl ? (
+                        <img src={token.logoUrl} alt={token.name} className="w-6 h-6" />
+                      ) : (
+                        <span className="text-xs font-bold">{token.symbol.substring(0, 2)}</span>
+                      )}
+                    </div>
                     <div className="ml-3 flex-1">
                       <div className="font-medium">{token.symbol}</div>
-                      <div className="text-sm text-neutral-400">{token.name}</div>
+                      <div className="text-xs text-neutral-400">{token.name}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-medium">{formatCurrency(token.price)}</div>
-                      <div className="text-sm text-red-500 flex items-center justify-end">
-                        <ArrowTrendingDown className="w-3 h-3 mr-1" />
+                      <div className="font-mono">{formatCurrency(token.price)}</div>
+                      <div className="text-xs text-error flex items-center justify-end">
+                        <ArrowDownCircle className="h-3 w-3 mr-1" />
                         {formatPercentage(token.priceChange24h)}
                       </div>
                     </div>
@@ -219,7 +220,7 @@ const MarketTrends = () => {
                 </Card>
               ))
             ) : (
-              <div className="col-span-3 text-center py-8 text-neutral-500">
+              <div className="col-span-3 p-4 text-center text-neutral-400">
                 No losers found in the current period
               </div>
             )}

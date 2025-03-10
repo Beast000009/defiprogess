@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { ArrowTrendingDown } from 'lucide-react'; // Added import for ArrowTrendingDown
 
 // Create an axios instance with default configuration
 const api = axios.create({
