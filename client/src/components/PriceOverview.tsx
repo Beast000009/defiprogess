@@ -21,8 +21,8 @@ const PriceOverview = () => {
   });
 
   // Function to sort token prices
-  const sortTokenPrices = (tokens: TokenPrice[]) => {
-    if (!tokens) return [];
+  const sortTokenPrices = (tokens: TokenPrice[] | undefined) => {
+    if (!tokens || tokens.length === 0) return [];
 
     return [...tokens].sort((a, b) => {
       let valueA, valueB;

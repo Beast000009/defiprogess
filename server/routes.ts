@@ -14,6 +14,52 @@ import axios from "axios";
 
 // CoinGecko API base URL
 const COINGECKO_API_URL = "https://api.coingecko.com/api/v3";
+const COINGECKO_PRO_API_URL = "https://pro-api.coingecko.com/api/v3";
+
+// API rate limiting management
+const API_RATE_LIMIT = {
+  isRateLimited: false,
+  resetTime: 0,
+  queue: [] as (() => void)[],
+  batchSize: 3, // Number of requests to process at once
+  processingQueue: false
+};
+
+// Process the API request queue when rate limit resets
+const processQueue = async () => {
+  if (API_RATE_LIMIT.processingQueue || API_RATE_LIMIT.queue.length === 0) return;
+  
+  API_RATE_LIMIT.processingQueue = true;
+  
+  // Process batch of requests
+  const batch = API_RATE_LIMIT.queue.splice(0, API_RATE_LIMIT.batchSize);
+  for (const request of batch) {
+    request();
+    // Add a small delay between requests
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+  
+  API_RATE_LIMIT.processingQueue = false;
+  
+  // If there are more requests, schedule next batch
+  if (API_RATE_LIMIT.queue.length > 0) {
+    setTimeout(processQueue, 1000);
+  }
+};
+
+// Handle rate limit reset
+const handleRateLimitReset = () => {
+  const now = Date.now();
+  if (now >= API_RATE_LIMIT.resetTime) {
+    API_RATE_LIMIT.isRateLimited = false;
+    API_RATE_LIMIT.resetTime = 0;
+    processQueue();
+  } else {
+    // Check again when reset time is reached
+    const timeToReset = API_RATE_LIMIT.resetTime - now;
+    setTimeout(handleRateLimitReset, timeToReset);
+  }
+};
 
 // Mapping for token symbols to CoinGecko IDs
 const COINGECKO_ID_MAP: Record<string, string> = {
@@ -68,66 +114,231 @@ const simulateTxHash = () => {
   ).join("");
 };
 
-// Get token price from CoinGecko using their API
-const getTokenPrice = async (tokenSymbol: string) => {
-  try {
-    // Convert token symbol to CoinGecko ID
-    const coinId = COINGECKO_ID_MAP[tokenSymbol] || tokenSymbol.toLowerCase();
+// Get token price from CoinGecko using their API with rate limiting
+const getTokenPrice = async (tokenSymbol: string): Promise<{
+  price: string;
+  priceChange24h: string;
+  volume24h: string | null;
+  marketCap: string | null;
+}> => {
+  // Returns a promise that resolves with token price data
+  return new Promise((resolve, reject) => {
+    const fetchPrice = async () => {
+      try {
+        // Convert token symbol to CoinGecko ID
+        const coinId = COINGECKO_ID_MAP[tokenSymbol] || tokenSymbol.toLowerCase();
+        
+        // Try to get data from API
+        const response = await axios.get(
+          `${COINGECKO_API_URL}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true`
+        );
+        
+        if (!response.data || !response.data[coinId]) {
+          throw new Error(`Price data not found for ${tokenSymbol}`);
+        }
+        
+        const data = response.data[coinId];
+        resolve({
+          price: data.usd.toString(),
+          priceChange24h: data.usd_24h_change ? data.usd_24h_change.toFixed(2) : "0.00",
+          volume24h: data.usd_24h_vol ? data.usd_24h_vol.toString() : null,
+          marketCap: data.usd_market_cap ? data.usd_market_cap.toString() : null
+        });
+      } catch (error: any) {
+        // Handle rate limiting
+        if (error.response && error.response.status === 429) {
+          console.log(`Rate limited for ${tokenSymbol}. Adding to queue.`);
+          
+          // Get retry time from headers if available
+          const retryAfter = error.response.headers['retry-after'];
+          const resetTime = retryAfter 
+            ? Date.now() + parseInt(retryAfter) * 1000 
+            : Date.now() + 60000; // Default to 60 seconds
+            
+          // Update rate limit status
+          API_RATE_LIMIT.isRateLimited = true;
+          API_RATE_LIMIT.resetTime = Math.max(API_RATE_LIMIT.resetTime, resetTime);
+          
+          // Add request to queue
+          API_RATE_LIMIT.queue.push(() => {
+            getTokenPrice(tokenSymbol)
+              .then(resolve)
+              .catch(reject);
+          });
+          
+          // Start rate limit reset handler if not already started
+          if (API_RATE_LIMIT.resetTime > 0 && !API_RATE_LIMIT.processingQueue) {
+            setTimeout(handleRateLimitReset, Math.max(1000, API_RATE_LIMIT.resetTime - Date.now()));
+          }
+          
+          // For now, reject with rate limit error to trigger fallback to cached data
+          reject(new Error('Rate limited'));
+        } else {
+          console.error(`Error fetching price for ${tokenSymbol}:`, error);
+          reject(error);
+        }
+      }
+    };
     
-    const response = await axios.get(
-      `${COINGECKO_API_URL}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true`
-    );
-    
-    if (!response.data || !response.data[coinId]) {
-      throw new Error(`Price data not found for ${tokenSymbol}`);
+    // If currently rate limited, add to queue
+    if (API_RATE_LIMIT.isRateLimited) {
+      API_RATE_LIMIT.queue.push(() => {
+        getTokenPrice(tokenSymbol)
+          .then(resolve)
+          .catch(reject);
+      });
+      
+      // Reject immediately with rate limit error to trigger fallback
+      reject(new Error('Rate limited, using cached data'));
+    } else {
+      // Execute request immediately
+      fetchPrice();
     }
-    
-    const data = response.data[coinId];
-    return {
-      price: data.usd.toString(),
-      priceChange24h: data.usd_24h_change ? data.usd_24h_change.toFixed(2) : "0.00",
-      volume24h: data.usd_24h_vol ? data.usd_24h_vol.toString() : null,
-      marketCap: data.usd_market_cap ? data.usd_market_cap.toString() : null
-    };
-  } catch (error) {
-    console.error(`Error fetching price for ${tokenSymbol}:`, error);
-    throw error;
-  }
+  });
 };
 
-// Get trending cryptocurrencies from CoinGecko
+// Get trending cryptocurrencies from CoinGecko with rate limiting
 const getTrendingCoins = async () => {
-  try {
-    const response = await axios.get(`${COINGECKO_API_URL}/search/trending`);
-    return response.data.coins.map((coin: any) => ({
-      id: coin.item.id,
-      name: coin.item.name,
-      symbol: coin.item.symbol,
-      logoUrl: coin.item.large,
-      marketCapRank: coin.item.market_cap_rank
-    }));
-  } catch (error) {
-    console.error("Error fetching trending coins:", error);
-    throw error;
-  }
+  return new Promise((resolve, reject) => {
+    const fetchTrending = async () => {
+      try {
+        const response = await axios.get(`${COINGECKO_API_URL}/search/trending`);
+        const trendingCoins = response.data.coins.map((coin: any) => ({
+          id: coin.item.id,
+          name: coin.item.name,
+          symbol: coin.item.symbol,
+          logoUrl: coin.item.large,
+          marketCapRank: coin.item.market_cap_rank
+        }));
+        resolve(trendingCoins);
+      } catch (error: any) {
+        // Handle rate limiting
+        if (error.response && error.response.status === 429) {
+          console.log("Rate limited when fetching trending coins. Adding to queue.");
+          
+          // Get retry time from headers if available
+          const retryAfter = error.response.headers['retry-after'];
+          const resetTime = retryAfter 
+            ? Date.now() + parseInt(retryAfter) * 1000 
+            : Date.now() + 60000; // Default to 60 seconds
+            
+          // Update rate limit status
+          API_RATE_LIMIT.isRateLimited = true;
+          API_RATE_LIMIT.resetTime = Math.max(API_RATE_LIMIT.resetTime, resetTime);
+          
+          // Add request to queue
+          API_RATE_LIMIT.queue.push(() => {
+            getTrendingCoins()
+              .then(resolve)
+              .catch(reject);
+          });
+          
+          // Start rate limit reset handler if not already started
+          if (API_RATE_LIMIT.resetTime > 0 && !API_RATE_LIMIT.processingQueue) {
+            setTimeout(handleRateLimitReset, Math.max(1000, API_RATE_LIMIT.resetTime - Date.now()));
+          }
+          
+          // Return empty trending list for now
+          resolve([]);
+        } else {
+          console.error("Error fetching trending coins:", error);
+          reject(error);
+        }
+      }
+    };
+    
+    // If currently rate limited, add to queue
+    if (API_RATE_LIMIT.isRateLimited) {
+      API_RATE_LIMIT.queue.push(() => {
+        getTrendingCoins()
+          .then(resolve)
+          .catch(reject);
+      });
+      
+      // Return empty trending list for now
+      resolve([]);
+    } else {
+      // Execute request immediately
+      fetchTrending();
+    }
+  });
 };
 
-// Get global crypto market data
+// Get global crypto market data with rate limiting
 const getGlobalMarketData = async () => {
-  try {
-    const response = await axios.get(`${COINGECKO_API_URL}/global`);
-    const data = response.data.data;
-    
-    return {
-      totalMarketCap: data.total_market_cap.usd,
-      totalVolume24h: data.total_volume.usd,
-      marketCapPercentage: data.market_cap_percentage,
-      marketCapChangePercentage24hUsd: data.market_cap_change_percentage_24h_usd
+  return new Promise((resolve, reject) => {
+    const fetchGlobalData = async () => {
+      try {
+        const response = await axios.get(`${COINGECKO_API_URL}/global`);
+        const data = response.data.data;
+        
+        resolve({
+          totalMarketCap: data.total_market_cap.usd,
+          totalVolume24h: data.total_volume.usd,
+          marketCapPercentage: data.market_cap_percentage,
+          marketCapChangePercentage24hUsd: data.market_cap_change_percentage_24h_usd
+        });
+      } catch (error: any) {
+        // Handle rate limiting
+        if (error.response && error.response.status === 429) {
+          console.log("Rate limited when fetching global market data. Adding to queue.");
+          
+          // Get retry time from headers if available
+          const retryAfter = error.response.headers['retry-after'];
+          const resetTime = retryAfter 
+            ? Date.now() + parseInt(retryAfter) * 1000 
+            : Date.now() + 60000; // Default to 60 seconds
+            
+          // Update rate limit status
+          API_RATE_LIMIT.isRateLimited = true;
+          API_RATE_LIMIT.resetTime = Math.max(API_RATE_LIMIT.resetTime, resetTime);
+          
+          // Add request to queue
+          API_RATE_LIMIT.queue.push(() => {
+            getGlobalMarketData()
+              .then(resolve)
+              .catch(reject);
+          });
+          
+          // Start rate limit reset handler if not already started
+          if (API_RATE_LIMIT.resetTime > 0 && !API_RATE_LIMIT.processingQueue) {
+            setTimeout(handleRateLimitReset, Math.max(1000, API_RATE_LIMIT.resetTime - Date.now()));
+          }
+          
+          // Return default market data for now
+          resolve({
+            totalMarketCap: 0,
+            totalVolume24h: 0,
+            marketCapPercentage: {},
+            marketCapChangePercentage24hUsd: 0
+          });
+        } else {
+          console.error("Error fetching global market data:", error);
+          reject(error);
+        }
+      }
     };
-  } catch (error) {
-    console.error("Error fetching global market data:", error);
-    throw error;
-  }
+    
+    // If currently rate limited, add to queue
+    if (API_RATE_LIMIT.isRateLimited) {
+      API_RATE_LIMIT.queue.push(() => {
+        getGlobalMarketData()
+          .then(resolve)
+          .catch(reject);
+      });
+      
+      // Return default market data for now
+      resolve({
+        totalMarketCap: 0,
+        totalVolume24h: 0,
+        marketCapPercentage: {},
+        marketCapChangePercentage24hUsd: 0
+      });
+    } else {
+      // Execute request immediately
+      fetchGlobalData();
+    }
+  });
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
