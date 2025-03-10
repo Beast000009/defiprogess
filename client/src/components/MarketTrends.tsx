@@ -1,170 +1,238 @@
+
 import { useQuery } from "@tanstack/react-query";
-import { fetchTokenPrices, TokenPrice, formatPriceChange } from "@/lib/api";
+import { fetchTokenPrices, TokenPrice, formatPriceChange, formatUsdValue } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { ArrowTrendingUp, ArrowTrendingDown } from "lucide-react";
 
 const MarketTrends = () => {
-  const { data: tokenPrices, isLoading, error } = useQuery({
+  const [period, setPeriod] = useState("24h");
+  
+  const { data: tokenPrices, isLoading, error } = useQuery<TokenPrice[]>({
     queryKey: ['/api/prices'],
     refetchInterval: 60000 // Refresh every minute
   });
 
   if (isLoading) {
     return (
-      <Card className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
-        <CardHeader className="px-0 pt-0">
-          <div className="flex items-center justify-between mb-4">
-            <Skeleton className="h-6 w-32" />
-            <div className="flex space-x-1">
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-6 w-24" />
+      <div className="mb-8">
+        <h2 className="text-xl font-bold mb-4">Market Trends</h2>
+        <Tabs defaultValue="gainers">
+          <div className="flex justify-between items-center mb-4">
+            <TabsList>
+              <TabsTrigger value="gainers">Top Gainers</TabsTrigger>
+              <TabsTrigger value="losers">Top Losers</TabsTrigger>
+            </TabsList>
+            <div className="flex">
+              <Skeleton className="h-8 w-12 rounded-md" />
+              <Skeleton className="h-8 w-12 rounded-md ml-2" />
+              <Skeleton className="h-8 w-12 rounded-md ml-2" />
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Skeleton className="w-full h-60" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="bg-neutral-800 rounded-xl border border-red-800 p-4 text-red-400">
-        <CardContent>
-          <p>Error loading market data. Please try again later.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Sort tokens by price change
-  const sortedTokens = [...(tokenPrices || [])];
-  const gainers = sortedTokens
-    .filter((token: TokenPrice) => parseFloat(token.priceChange24h) > 0)
-    .sort((a: TokenPrice, b: TokenPrice) => parseFloat(b.priceChange24h) - parseFloat(a.priceChange24h));
-  
-  const losers = sortedTokens
-    .filter((token: TokenPrice) => parseFloat(token.priceChange24h) < 0)
-    .sort((a: TokenPrice, b: TokenPrice) => parseFloat(a.priceChange24h) - parseFloat(b.priceChange24h));
-
-  return (
-    <Card className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
-      <CardHeader className="px-0 pt-0">
-        <div className="flex items-center justify-between mb-4">
-          <CardTitle className="text-lg">Market Trends</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <Tabs defaultValue="gainers">
-          <div className="flex justify-end mb-4">
-            <TabsList className="bg-neutral-700">
-              <TabsTrigger value="gainers" className="text-xs px-2.5 py-1">
-                Top Gainers
-              </TabsTrigger>
-              <TabsTrigger value="losers" className="text-xs px-2.5 py-1">
-                Top Losers
-              </TabsTrigger>
-            </TabsList>
-          </div>
           
-          <TabsContent value="gainers" className="mt-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-neutral-400 border-b border-neutral-700">
-                    <th className="pb-2 font-medium">Asset</th>
-                    <th className="pb-2 font-medium text-right">Price</th>
-                    <th className="pb-2 font-medium text-right">24h Change</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {gainers.slice(0, 4).map((token: TokenPrice) => (
-                    <tr key={token.id} className="border-b border-neutral-700">
-                      <td className="py-3">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-full bg-neutral-600 flex items-center justify-center overflow-hidden mr-2">
-                            <img src={token.logoUrl} alt={token.symbol} className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{token.name}</div>
-                            <div className="text-xs text-neutral-400">{token.symbol}</div>
-                          </div>
+          <TabsContent value="gainers">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i} className="bg-neutral-800 border-neutral-700">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="ml-2">
+                          <Skeleton className="h-5 w-16" />
+                          <Skeleton className="h-4 w-12 mt-1" />
                         </div>
-                      </td>
-                      <td className="py-3 text-right font-mono">
-                        ${parseFloat(token.price).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 6
-                        })}
-                      </td>
-                      <td className="py-3 text-right text-success">
-                        {formatPriceChange(token.priceChange24h)}
-                      </td>
-                    </tr>
-                  ))}
-                  {gainers.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="py-3 text-center text-neutral-400">
-                        No gainers found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </div>
+                      <div className="text-right">
+                        <Skeleton className="h-5 w-20 ml-auto" />
+                        <Skeleton className="h-4 w-16 mt-1 ml-auto" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
           
-          <TabsContent value="losers" className="mt-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-neutral-400 border-b border-neutral-700">
-                    <th className="pb-2 font-medium">Asset</th>
-                    <th className="pb-2 font-medium text-right">Price</th>
-                    <th className="pb-2 font-medium text-right">24h Change</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {losers.slice(0, 4).map((token: TokenPrice) => (
-                    <tr key={token.id} className="border-b border-neutral-700">
-                      <td className="py-3">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-full bg-neutral-600 flex items-center justify-center overflow-hidden mr-2">
-                            <img src={token.logoUrl} alt={token.symbol} className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{token.name}</div>
-                            <div className="text-xs text-neutral-400">{token.symbol}</div>
-                          </div>
+          <TabsContent value="losers">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i} className="bg-neutral-800 border-neutral-700">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="ml-2">
+                          <Skeleton className="h-5 w-16" />
+                          <Skeleton className="h-4 w-12 mt-1" />
                         </div>
-                      </td>
-                      <td className="py-3 text-right font-mono">
-                        ${parseFloat(token.price).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 6
-                        })}
-                      </td>
-                      <td className="py-3 text-right text-error">
-                        {formatPriceChange(token.priceChange24h)}
-                      </td>
-                    </tr>
-                  ))}
-                  {losers.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="py-3 text-center text-neutral-400">
-                        No losers found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </div>
+                      <div className="text-right">
+                        <Skeleton className="h-5 w-20 ml-auto" />
+                        <Skeleton className="h-4 w-16 mt-1 ml-auto" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
         </Tabs>
-      </CardContent>
-    </Card>
+      </div>
+    );
+  }
+
+  if (error || !tokenPrices) {
+    return (
+      <div className="p-4 bg-neutral-800 rounded-xl border border-red-800 text-red-400 mb-8">
+        <p>Error loading market trend data. Please try again later.</p>
+      </div>
+    );
+  }
+
+  // Process the data - sort by price change
+  const sortedByChange = [...tokenPrices].sort((a, b) => {
+    const changeA = parseFloat(a.priceChange24h || "0");
+    const changeB = parseFloat(b.priceChange24h || "0");
+    return changeB - changeA;
+  });
+
+  // Get top gainers and losers
+  const topGainers = sortedByChange.filter(token => 
+    parseFloat(token.priceChange24h || "0") > 0
+  ).slice(0, 6);
+  
+  const topLosers = [...sortedByChange]
+    .filter(token => parseFloat(token.priceChange24h || "0") < 0)
+    .reverse()
+    .slice(0, 6);
+
+  // Format the price with dollar sign
+  const formatPrice = (price: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 8
+    }).format(parseFloat(price || "0"));
+  };
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-xl font-bold mb-4">Market Trends</h2>
+      <Tabs defaultValue="gainers">
+        <div className="flex justify-between items-center mb-4">
+          <TabsList>
+            <TabsTrigger value="gainers">Top Gainers</TabsTrigger>
+            <TabsTrigger value="losers">Top Losers</TabsTrigger>
+          </TabsList>
+          <div className="flex">
+            <button 
+              className={`px-2 py-1 text-xs rounded ${period === '24h' ? 'bg-primary text-primary-foreground' : 'bg-neutral-700'}`}
+              onClick={() => setPeriod('24h')}
+            >
+              24h
+            </button>
+            <button 
+              className={`px-2 py-1 text-xs rounded ml-2 ${period === '7d' ? 'bg-primary text-primary-foreground' : 'bg-neutral-700'}`}
+              onClick={() => setPeriod('7d')}
+            >
+              7d
+            </button>
+            <button 
+              className={`px-2 py-1 text-xs rounded ml-2 ${period === '30d' ? 'bg-primary text-primary-foreground' : 'bg-neutral-700'}`}
+              onClick={() => setPeriod('30d')}
+            >
+              30d
+            </button>
+          </div>
+        </div>
+        
+        <TabsContent value="gainers">
+          {topGainers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topGainers.map((token) => (
+                <Card 
+                  key={token.id} 
+                  className="bg-neutral-800 border-neutral-700 hover:border-neutral-600 transition-colors cursor-pointer"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <img 
+                          src={token.logoUrl || `https://via.placeholder.com/32/2563eb/ffffff?text=${token.symbol.charAt(0)}`} 
+                          alt={token.name} 
+                          className="w-8 h-8 rounded-full"
+                        />
+                        <div className="ml-2">
+                          <h3 className="font-semibold text-sm">{token.symbol}</h3>
+                          <p className="text-xs text-neutral-400">{token.name}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{formatPrice(token.price)}</p>
+                        <p className="text-xs text-green-400 flex items-center justify-end">
+                          <ArrowTrendingUp className="w-3 h-3 mr-1" />
+                          {formatPriceChange(token.priceChange24h || "0")}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-neutral-400">
+              <p>No gainers data available at the moment.</p>
+              <p className="text-sm mt-2">This could be due to API rate limiting. Try again later.</p>
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="losers">
+          {topLosers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topLosers.map((token) => (
+                <Card 
+                  key={token.id} 
+                  className="bg-neutral-800 border-neutral-700 hover:border-neutral-600 transition-colors cursor-pointer"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <img 
+                          src={token.logoUrl || `https://via.placeholder.com/32/2563eb/ffffff?text=${token.symbol.charAt(0)}`} 
+                          alt={token.name} 
+                          className="w-8 h-8 rounded-full"
+                        />
+                        <div className="ml-2">
+                          <h3 className="font-semibold text-sm">{token.symbol}</h3>
+                          <p className="text-xs text-neutral-400">{token.name}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{formatPrice(token.price)}</p>
+                        <p className="text-xs text-red-400 flex items-center justify-end">
+                          <ArrowTrendingDown className="w-3 h-3 mr-1" />
+                          {formatPriceChange(token.priceChange24h || "0")}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-neutral-400">
+              <p>No losers data available at the moment.</p>
+              <p className="text-sm mt-2">This could be due to API rate limiting. Try again later.</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 

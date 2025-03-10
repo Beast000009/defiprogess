@@ -57,7 +57,8 @@ const API_RATE_LIMIT = {
   resetTime: 0,
   queue: [] as (() => void)[],
   batchSize: 3, // Number of requests to process at once
-  processingQueue: false
+  processingQueue: false,
+  limit: 30 // CoinGecko's rate limit is 30 requests per minute for free tier
 };
 
 // Process the API request queue when rate limit resets
@@ -165,13 +166,30 @@ const simulateTxHash = () => {
   ).join("");
 };
 
-// Get token price from CoinGecko using their API with rate limiting
+// Cache for storing token prices to reduce API calls
+const tokenPriceCache = new Map<string, {
+  data: {
+    price: string;
+    priceChange24h: string;
+    volume24h: string | null;
+    marketCap: string | null;
+  },
+  timestamp: number
+}>();
+
+// Get token price from CoinGecko using their API with rate limiting and caching
 const getTokenPrice = async (tokenSymbol: string): Promise<{
   price: string;
   priceChange24h: string;
   volume24h: string | null;
   marketCap: string | null;
 }> => {
+  // Check cache first (valid for 5 minutes)
+  const cachedData = tokenPriceCache.get(tokenSymbol);
+  if (cachedData && Date.now() - cachedData.timestamp < 300000) {
+    return cachedData.data;
+  }
+  
   // Returns a promise that resolves with token price data
   return new Promise((resolve, reject) => {
     const fetchPrice = async () => {
@@ -198,12 +216,20 @@ const getTokenPrice = async (tokenSymbol: string): Promise<{
         }
         
         const data = response.data[coinId];
-        resolve({
+        const result = {
           price: data.usd.toString(),
           priceChange24h: data.usd_24h_change ? data.usd_24h_change.toFixed(2) : "0.00",
           volume24h: data.usd_24h_vol ? data.usd_24h_vol.toString() : null,
           marketCap: data.usd_market_cap ? data.usd_market_cap.toString() : null
+        };
+        
+        // Update cache
+        tokenPriceCache.set(tokenSymbol, {
+          data: result,
+          timestamp: Date.now()
         });
+        
+        resolve(result);
       } catch (error: any) {
         // Handle rate limiting
         if (error.response && error.response.status === 429) {
@@ -231,25 +257,45 @@ const getTokenPrice = async (tokenSymbol: string): Promise<{
             setTimeout(handleRateLimitReset, Math.max(1000, API_RATE_LIMIT.resetTime - Date.now()));
           }
           
-          // For now, reject with rate limit error to trigger fallback to cached data
-          reject(new Error('Rate limited'));
+          // If we have cached data, use that instead of rejecting
+          if (cachedData) {
+            console.log(`Using cached data for ${tokenSymbol} due to rate limiting`);
+            resolve(cachedData.data);
+          } else {
+            // For now, reject with rate limit error to trigger fallback to cached data
+            reject(new Error('Rate limited'));
+          }
         } else {
           console.error(`Error fetching price for ${tokenSymbol}:`, error);
-          reject(error);
+          
+          // If we have cached data, use that instead of rejecting on error
+          if (cachedData) {
+            console.log(`Using cached data for ${tokenSymbol} due to error`);
+            resolve(cachedData.data);
+          } else {
+            reject(error);
+          }
         }
       }
     };
     
-    // If currently rate limited, add to queue
+    // If currently rate limited, check if we have cached data
     if (API_RATE_LIMIT.isRateLimited) {
-      API_RATE_LIMIT.queue.push(() => {
-        getTokenPrice(tokenSymbol)
-          .then(resolve)
-          .catch(reject);
-      });
-      
-      // Reject immediately with rate limit error to trigger fallback
-      reject(new Error('Rate limited, using cached data'));
+      if (cachedData) {
+        // Use cached data
+        console.log(`Using cached data for ${tokenSymbol} due to active rate limiting`);
+        resolve(cachedData.data);
+      } else {
+        // Add to queue for later and reject for now
+        API_RATE_LIMIT.queue.push(() => {
+          getTokenPrice(tokenSymbol)
+            .then(resolve)
+            .catch(reject);
+        });
+        
+        // Reject immediately with rate limit error to trigger fallback
+        reject(new Error('Rate limited, using cached data'));
+      }
     } else {
       // Execute request immediately
       fetchPrice();
