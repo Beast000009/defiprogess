@@ -18,7 +18,7 @@ const COINGECKO_PRO_API_URL = "https://pro-api.coingecko.com/api/v3";
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || "";
 
 // Determine if we should use the pro API
-const USE_PRO_API = false; // Disabled pro API due to issues with key
+const USE_PRO_API = !!COINGECKO_API_KEY;
 
 // Map of coin symbols to CoinGecko IDs
 const COINGECKO_ID_MAPPING: Record<string, string> = {
