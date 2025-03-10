@@ -3,28 +3,46 @@ import { fetchTokenPrices, TokenPrice, formatPriceChange, formatUsdValue } from 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, TrendingUp, Info, ChevronUp, ChevronDown } from "lucide-react";
+import { RefreshCw, TrendingUp, Info, ChevronUp, ChevronDown, Search, X } from "lucide-react";
 import { 
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 
 const PriceOverview = () => {
   const [sortBy, setSortBy] = useState<string>("market_cap");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedToken, setSelectedToken] = useState<TokenPrice | null>(null);
   
   const { data: tokenPrices, isLoading, error, refetch } = useQuery<TokenPrice[]>({
     queryKey: ['/api/prices'],
     refetchInterval: 60000 // Refresh every minute
   });
 
+  // Function to filter tokens based on search query
+  const filterTokens = (tokens: TokenPrice[] | undefined) => {
+    if (!tokens || tokens.length === 0) return [];
+    
+    if (!searchQuery) return tokens;
+    
+    const query = searchQuery.toLowerCase();
+    return tokens.filter(token => 
+      token.name.toLowerCase().includes(query) || 
+      token.symbol.toLowerCase().includes(query)
+    );
+  };
+
   // Function to sort token prices
   const sortTokenPrices = (tokens: TokenPrice[] | undefined) => {
     if (!tokens || tokens.length === 0) return [];
+    
+    const filteredTokens = filterTokens(tokens);
 
-    return [...tokens].sort((a, b) => {
+    return [...filteredTokens].sort((a, b) => {
       let valueA, valueB;
 
       switch (sortBy) {
@@ -49,6 +67,12 @@ const PriceOverview = () => {
 
       return sortOrder === "asc" ? valueA - valueB : valueB - valueA;
     });
+  };
+  
+  // Handle token selection
+  const handleTokenSelect = (token: TokenPrice) => {
+    setSelectedToken(token);
+    // You can pass the selected token to PriceChart here
   };
 
   // Handler for refreshing data
