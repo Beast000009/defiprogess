@@ -3,7 +3,19 @@ import { fetchTokenPrices, TokenPrice, formatPriceChange, formatUsdValue } from 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, TrendingUp, Info, ChevronUp, ChevronDown, Search, X } from "lucide-react";
+import { 
+  RefreshCw, 
+  TrendingUp, 
+  Info, 
+  ChevronUp, 
+  ChevronDown, 
+  Search, 
+  X, 
+  ExternalLink,
+  Clock,
+  DollarSign,
+  BarChart3
+} from "lucide-react";
 import { 
   Tooltip,
   TooltipContent,
@@ -11,6 +23,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import PriceChart from "@/components/PriceChart";
 
 const PriceOverview = () => {
   const [sortBy, setSortBy] = useState<string>("market_cap");
@@ -146,7 +167,26 @@ const PriceOverview = () => {
   return (
     <div className="relative bg-neutral-800 rounded-xl p-4 mb-8">
       <div className="flex flex-col sm:flex-row justify-between mb-4 gap-3">
-        <h2 className="text-xl font-semibold">Live Market Data</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-semibold">Live Market Data</h2>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-neutral-400" />
+            <Input
+              placeholder="Search tokens..."
+              className="pl-8 h-9 bg-neutral-700 border-neutral-600"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button 
+                className="absolute right-2 top-2.5" 
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4 text-neutral-400 hover:text-white" />
+              </button>
+            )}
+          </div>
+        </div>
         <div className="flex items-center space-x-3">
           <Tabs defaultValue="table" className="w-[200px]">
             <TabsList className="grid w-full grid-cols-2">
@@ -208,7 +248,11 @@ const PriceOverview = () => {
                   </thead>
                   <tbody>
                     {sortedTokens.map((token: TokenPrice) => (
-                      <tr key={token.id} className="border-b border-neutral-700 hover:bg-neutral-700/30 transition-colors">
+                      <tr 
+                        key={token.id} 
+                        className="border-b border-neutral-700 hover:bg-neutral-700/30 transition-colors cursor-pointer"
+                        onClick={() => handleTokenSelect(token)}
+                      >
                         <td className="py-3">
                           <div className="flex items-center">
                             <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden mr-2">
@@ -244,8 +288,12 @@ const PriceOverview = () => {
             
             <TabsContent value="cards">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                {sortedTokens.slice(0, 8).map((token: TokenPrice) => (
-                  <div key={token.id} className="bg-neutral-700 rounded-xl p-4 hover:border-primary-light border border-transparent transition-all">
+                {sortedTokens.map((token: TokenPrice) => (
+                  <div 
+                    key={token.id} 
+                    className="bg-neutral-700 rounded-xl p-4 hover:bg-neutral-600 border border-transparent hover:border-primary-light transition-all cursor-pointer"
+                    onClick={() => handleTokenSelect(token)}
+                  >
                     <div className="flex items-center mb-3">
                       <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden mr-2">
                         <img src={token.logoUrl} alt={token.symbol} className="w-5 h-5" />
@@ -322,6 +370,119 @@ const PriceOverview = () => {
       <div className="text-xs text-neutral-400 text-right mt-2">
         Last updated: {new Date().toLocaleTimeString()}
       </div>
+
+      {/* Token Details Dialog */}
+      <Dialog open={!!selectedToken} onOpenChange={(open) => !open && setSelectedToken(null)}>
+        <DialogContent className="sm:max-w-[800px] bg-neutral-900 border-neutral-700">
+          {selectedToken && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden">
+                    <img src={selectedToken.logoUrl} alt={selectedToken.symbol} className="w-5 h-5" />
+                  </div>
+                  {selectedToken.name} 
+                  <span className="text-neutral-400 ml-1">({selectedToken.symbol})</span>
+                </DialogTitle>
+                <DialogDescription className="text-neutral-400">
+                  Live market data and price chart
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                <div className="bg-neutral-800 p-4 rounded-lg flex items-center gap-3">
+                  <DollarSign className="w-5 h-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-neutral-400">Current Price</div>
+                    <div className="font-mono font-medium text-lg">
+                      ${parseFloat(selectedToken.price).toLocaleString(undefined, { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 6 
+                      })}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-neutral-800 p-4 rounded-lg flex items-center gap-3">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-neutral-400">24h Change</div>
+                    <div className={`font-medium ${parseFloat(selectedToken.priceChange24h) >= 0 ? 'text-success' : 'text-error'}`}>
+                      {formatPriceChange(selectedToken.priceChange24h)}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-neutral-800 p-4 rounded-lg flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-neutral-400">Updated</div>
+                    <div className="font-medium">
+                      {new Date().toLocaleTimeString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="bg-neutral-800 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium mb-3 text-neutral-400">Market Statistics</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-400">Market Cap</span>
+                      <span className="font-medium">{formatUsdValue(selectedToken.marketCap || "0")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-400">24h Volume</span>
+                      <span className="font-medium">{formatUsdValue(selectedToken.volume24h || "0")}</span>
+                    </div>
+                    {selectedToken.supply && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">Supply</span>
+                        <span className="font-medium">{parseFloat(selectedToken.supply).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {selectedToken.rank && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">Market Rank</span>
+                        <span className="font-medium">#{selectedToken.rank}</span>
+                      </div>
+                    )}
+                    {selectedToken.ath && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">All Time High</span>
+                        <span className="font-medium">${parseFloat(selectedToken.ath).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="bg-neutral-800 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium mb-3 text-neutral-400">Trade {selectedToken.symbol}</h3>
+                  <div className="space-y-3">
+                    <p className="text-sm text-neutral-400">You can instantly trade {selectedToken.symbol} on our platform using the Swap or Spot Trading features.</p>
+                    <div className="flex gap-3 mt-3">
+                      <a href="/swap" className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary/80 rounded-md text-sm font-medium transition-colors">
+                        Swap {selectedToken.symbol}
+                      </a>
+                      <a href="/spot-trading" className="inline-flex items-center px-4 py-2 bg-neutral-700 hover:bg-neutral-600 rounded-md text-sm font-medium transition-colors">
+                        Spot Trading
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 bg-neutral-800 p-4 rounded-lg">
+                <h3 className="text-sm font-medium mb-2 text-neutral-400">Price Chart</h3>
+                <div className="h-[300px]">
+                  <PriceChart tokenSymbol={selectedToken.symbol} />
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
