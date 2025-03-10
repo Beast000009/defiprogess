@@ -12,6 +12,9 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import axios from "axios";
 
+// CoinGecko API key (Pro)
+const COINGECKO_API_KEY = "CG-DabLio2kdoGa5MG2Pc7tqvNk";
+
 // Nomics API base URL and key
 const NOMICS_API_URL = "https://api.nomics.com/v1";
 const NOMICS_API_KEY = process.env.NOMICS_API_KEY || "";
@@ -206,11 +209,11 @@ const getTokenPriceFromCoinGecko = async (tokenSymbol: string): Promise<{
         // Convert token symbol to CoinGecko ID
         const coinId = COINGECKO_ID_MAP[tokenSymbol] || tokenSymbol.toLowerCase();
 
-        // Select API URL based on whether we have a pro key
-        const apiUrl = "https://api.coingecko.com/api/v3"; //Using CoinGecko API
+        // Use the Pro API URL with our API key
+        const apiUrl = "https://pro-api.coingecko.com/api/v3";
 
-        // Build the request URL
-        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true`;
+        // Build the request URL with API key
+        let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true&x_cg_pro_api_key=${COINGECKO_API_KEY}`;
 
         try {
           // Try to get data from API
