@@ -662,25 +662,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let user = await storage.getUserByWalletAddress(walletAddress);
 
-      // If user doesn't exist, create a new one
+      // If user doesn't exist, create a new one but don't add fake balances
       if (!user) {
         user = await storage.createUser({
           username: `user_${Math.floor(Math.random() * 10000)}`,
           password: "password", // This is a demo app
           walletAddress
         });
-
-        // Add some demo balances
+        
+        // Create empty balances
         const tokens = await storage.getAllTokens();
         for (const token of tokens) {
-          const randomBalance = token.symbol === "USDT" ? 
-            (Math.random() * 5000 + 1000).toFixed(2) : 
-            (Math.random() * 5 + 0.1).toFixed(token.symbol === "BTC" ? 8 : 4);
-
           await storage.createOrUpdateUserBalance({
             userId: user.id,
             tokenId: token.id,
-            balance: randomBalance
+            balance: "0"
           });
         }
       }

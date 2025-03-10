@@ -69,6 +69,7 @@ export interface PortfolioAsset {
 export interface Portfolio {
   walletAddress: string;
   totalValue: string;
+  todayChange?: string;  // optional since it might come from real wallet data
   assets: PortfolioAsset[];
 }
 

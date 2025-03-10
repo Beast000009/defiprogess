@@ -81,13 +81,21 @@ const PortfolioOverview = () => {
       <div className="mb-4">
         <div className="flex items-center justify-between">
           <div className="text-neutral-400 text-sm">Total Balance</div>
-          <div className="text-primary-light text-xs font-medium">+5.2% today</div>
+          {/* Only show change percentage if it's from real data */}
+          {portfolio?.todayChange && (
+            <div className={`text-xs font-medium ${parseFloat(portfolio.todayChange) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {parseFloat(portfolio.todayChange) >= 0 ? '+' : ''}{portfolio.todayChange}% today
+            </div>
+          )}
         </div>
         <div className="text-2xl font-medium mb-1">
           {formatUsdValue(portfolio?.totalValue || 0)}
         </div>
         <div className="w-full h-2 bg-neutral-700 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-primary to-primary-light" style={{ width: '65%' }}></div>
+          <div className="h-full bg-gradient-to-r from-primary to-primary-light" 
+            style={{ width: portfolio?.totalValue && parseFloat(portfolio.totalValue) > 0 ? 
+              Math.min(parseFloat(portfolio.totalValue) / 100, 100) + '%' : '0%' }}>
+          </div>
         </div>
       </div>
       
