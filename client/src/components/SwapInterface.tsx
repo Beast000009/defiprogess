@@ -3,7 +3,16 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import TokenSelector from './TokenSelector';
-import { fetchTokens, fetchTokenPrices, swapTokens, formatTokenAmount, formatUsdValue } from '@/lib/api';
+import { 
+  fetchTokens, 
+  fetchTokenPrices, 
+  swapTokens, 
+  formatTokenAmount, 
+  formatUsdValue, 
+  Portfolio, 
+  PortfolioAsset, 
+  Token
+} from '@/lib/api';
 import { useWeb3 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
@@ -17,11 +26,20 @@ const SwapInterface = () => {
   const { address, isConnected } = useWeb3();
   const { toast } = useToast();
 
-  const { data: tokens } = useQuery({
+  const { data: tokens } = useQuery<Token[]>({
     queryKey: ['/api/tokens']
   });
 
-  const { data: tokenPrices } = useQuery({
+  const { data: tokenPrices } = useQuery<{
+    id: number;
+    symbol: string;
+    name: string;
+    logoUrl: string;
+    price: string;
+    priceChange24h: string;
+    volume24h?: string;
+    marketCap?: string;
+  }[]>({
     queryKey: ['/api/prices'],
     refetchInterval: 30000
   });
@@ -94,15 +112,37 @@ const SwapInterface = () => {
   };
 
   const handleMaxClick = () => {
-    // In a real app, you would get the actual user balance here
+    // Get actual user balance from portfolio data if available
+    const { data: portfolio } = useQuery<Portfolio>({
+      queryKey: ['/api/portfolio', address],
+      enabled: !!address
+    });
+    
     const fromToken = getTokenById(fromTokenId);
-    if (fromToken) {
-      if (fromToken.symbol === 'ETH') {
-        setFromAmount('1.24');
-      } else if (fromToken.symbol === 'USDT') {
-        setFromAmount('1000');
+    if (fromToken && portfolio?.assets) {
+      const asset = portfolio.assets.find((a: PortfolioAsset) => a.token.id === fromTokenId);
+      if (asset) {
+        setFromAmount(asset.balance);
       } else {
-        setFromAmount('10');
+        // Use sensible defaults for tokens not in portfolio
+        if (fromToken.symbol === 'ETH') {
+          setFromAmount('0.01');
+        } else if (fromToken.symbol === 'USDT') {
+          setFromAmount('10');
+        } else {
+          setFromAmount('1');
+        }
+      }
+    } else {
+      // Fallback values if portfolio not available
+      if (fromToken) {
+        if (fromToken.symbol === 'ETH') {
+          setFromAmount('0.01');
+        } else if (fromToken.symbol === 'USDT') {
+          setFromAmount('10');
+        } else {
+          setFromAmount('1');
+        }
       }
     }
   };
@@ -155,7 +195,18 @@ const SwapInterface = () => {
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-neutral-400">You Pay</label>
             <div className="text-sm text-neutral-400">
-              Balance: <span>1.24 ETH</span>
+              Balance: <span>{isConnected ? 
+                (() => {
+                  const { data: portfolio } = useQuery<Portfolio>({
+                    queryKey: ['/api/portfolio', address],
+                    enabled: !!address && isConnected
+                  });
+                  if (portfolio?.assets) {
+                    const asset = portfolio.assets.find((a: PortfolioAsset) => a.token.id === fromTokenId);
+                    return asset ? asset.balance : '0';
+                  }
+                  return '0';
+                })() : '0'} {fromToken?.symbol || ''}</span>
             </div>
           </div>
           
@@ -202,7 +253,18 @@ const SwapInterface = () => {
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-neutral-400">You Receive</label>
             <div className="text-sm text-neutral-400">
-              Balance: <span>0 {toToken?.symbol || 'USDT'}</span>
+              Balance: <span>{isConnected ? 
+                (() => {
+                  const { data: portfolio } = useQuery<Portfolio>({
+                    queryKey: ['/api/portfolio', address],
+                    enabled: !!address && isConnected
+                  });
+                  if (portfolio?.assets && toTokenId) {
+                    const asset = portfolio.assets.find((a: PortfolioAsset) => a.token.id === toTokenId);
+                    return asset ? asset.balance : '0';
+                  }
+                  return '0';
+                })() : '0'} {toToken?.symbol || ''}</span>
             </div>
           </div>
           
