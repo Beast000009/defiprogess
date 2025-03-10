@@ -26,6 +26,7 @@ const SwapInterface = () => {
   const { address, isConnected } = useWeb3();
   const { toast } = useToast();
 
+  // Data queries
   const { data: tokens } = useQuery<Token[]>({
     queryKey: ['/api/tokens']
   });
@@ -50,6 +51,7 @@ const SwapInterface = () => {
     enabled: !!address && isConnected
   });
 
+  // Swap mutation
   const swapMutation = useMutation({
     mutationFn: swapTokens,
     onSuccess: (data) => {
@@ -75,6 +77,7 @@ const SwapInterface = () => {
     }
   });
 
+  // Helper functions
   const getTokenById = (id?: number) => {
     if (!id || !tokens) return null;
     return tokens.find((t: any) => t.id === id) || null;
@@ -105,11 +108,7 @@ const SwapInterface = () => {
     setToAmount(isNaN(calculatedAmount) ? '' : calculatedAmount.toString());
   };
 
-  // Recalculate to amount when inputs change
-  useEffect(() => {
-    calculateToAmount();
-  }, [fromAmount, fromTokenId, toTokenId, tokenPrices]);
-
+  // Event handlers
   const handleSwapTokens = () => {
     const temp = fromTokenId;
     setFromTokenId(toTokenId);
@@ -168,21 +167,25 @@ const SwapInterface = () => {
       walletAddress: address || undefined
     });
   };
+  
+  // Side effects
+  useEffect(() => {
+    calculateToAmount();
+  }, [fromAmount, fromTokenId, toTokenId, tokenPrices]);
 
-  // Calculate USD value
+  // Computed values
   const fromTokenUsdValue = fromAmount && fromTokenId ? 
     parseFloat(fromAmount) * (getTokenPrice(fromTokenId) || 0) : 0;
   
   const toTokenUsdValue = toAmount && toTokenId ? 
     parseFloat(toAmount) * (getTokenPrice(toTokenId) || 0) : 0;
   
-  // Calculate rate
   const fromToken = getTokenById(fromTokenId);
   const toToken = getTokenById(toTokenId);
+  
   const rate = fromTokenId && toTokenId ? 
     getTokenPrice(toTokenId)! / getTokenPrice(fromTokenId)! : 0;
   
-  // Get token balances from portfolio
   const fromTokenBalance = (() => {
     if (!isConnected || !portfolio?.assets || !fromTokenId) return '0';
     const asset = portfolio.assets.find((a: PortfolioAsset) => a.token.id === fromTokenId);
