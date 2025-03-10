@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -10,10 +10,37 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
-import fetch from "node-fetch";
+import axios from "axios";
+
+// CoinGecko API base URL
+const COINGECKO_API_URL = "https://api.coingecko.com/api/v3";
+
+// Mapping for token symbols to CoinGecko IDs
+const COINGECKO_ID_MAP: Record<string, string> = {
+  'BTC': 'bitcoin',
+  'ETH': 'ethereum',
+  'SOL': 'solana',
+  'ADA': 'cardano',
+  'BNB': 'binancecoin',
+  'XRP': 'ripple',
+  'DOT': 'polkadot',
+  'DOGE': 'dogecoin',
+  'AVAX': 'avalanche-2',
+  'LINK': 'chainlink',
+  'USDT': 'tether',
+  'USDC': 'usd-coin',
+  'MATIC': 'matic-network',
+  'UNI': 'uniswap',
+  'SHIB': 'shiba-inu',
+  'LTC': 'litecoin',
+  'ATOM': 'cosmos',
+  'XLM': 'stellar',
+  'NEAR': 'near',
+  'ALGO': 'algorand'
+};
 
 // Utility to handle API errors
-const handleApiError = (res: any, error: unknown) => {
+const handleApiError = (res: Response, error: unknown) => {
   console.error("API Error:", error);
   
   if (error instanceof ZodError) {
@@ -41,30 +68,65 @@ const simulateTxHash = () => {
   ).join("");
 };
 
-// Get token price from CoinGecko
+// Get token price from CoinGecko using their API
 const getTokenPrice = async (tokenSymbol: string) => {
   try {
-    const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${tokenSymbol.toLowerCase()}&vs_currencies=usd&include_24hr_change=true`
+    // Convert token symbol to CoinGecko ID
+    const coinId = COINGECKO_ID_MAP[tokenSymbol] || tokenSymbol.toLowerCase();
+    
+    const response = await axios.get(
+      `${COINGECKO_API_URL}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true`
     );
     
-    if (!response.ok) {
-      throw new Error(`CoinGecko API error: ${response.status}`);
+    if (!response.data || !response.data[coinId]) {
+      throw new Error(`Price data not found for ${tokenSymbol}`);
     }
     
-    const data = await response.json();
-    if (data[tokenSymbol.toLowerCase()]) {
-      return {
-        price: data[tokenSymbol.toLowerCase()].usd.toString(),
-        priceChange24h: data[tokenSymbol.toLowerCase()].usd_24h_change.toFixed(2)
-      };
-    }
-    
-    throw new Error(`Price data not found for ${tokenSymbol}`);
+    const data = response.data[coinId];
+    return {
+      price: data.usd.toString(),
+      priceChange24h: data.usd_24h_change ? data.usd_24h_change.toFixed(2) : "0.00",
+      volume24h: data.usd_24h_vol ? data.usd_24h_vol.toString() : null,
+      marketCap: data.usd_market_cap ? data.usd_market_cap.toString() : null
+    };
   } catch (error) {
-    console.error("Failed to fetch token price:", error);
-    // Fallback to stored price
-    return null;
+    console.error(`Error fetching price for ${tokenSymbol}:`, error);
+    throw error;
+  }
+};
+
+// Get trending cryptocurrencies from CoinGecko
+const getTrendingCoins = async () => {
+  try {
+    const response = await axios.get(`${COINGECKO_API_URL}/search/trending`);
+    return response.data.coins.map((coin: any) => ({
+      id: coin.item.id,
+      name: coin.item.name,
+      symbol: coin.item.symbol,
+      logoUrl: coin.item.large,
+      marketCapRank: coin.item.market_cap_rank
+    }));
+  } catch (error) {
+    console.error("Error fetching trending coins:", error);
+    throw error;
+  }
+};
+
+// Get global crypto market data
+const getGlobalMarketData = async () => {
+  try {
+    const response = await axios.get(`${COINGECKO_API_URL}/global`);
+    const data = response.data.data;
+    
+    return {
+      totalMarketCap: data.total_market_cap.usd,
+      totalVolume24h: data.total_volume.usd,
+      marketCapPercentage: data.market_cap_percentage,
+      marketCapChangePercentage24hUsd: data.market_cap_change_percentage_24h_usd
+    };
+  } catch (error) {
+    console.error("Error fetching global market data:", error);
+    throw error;
   }
 };
 
@@ -92,20 +154,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const tokenPrice = tokenPrices.find(tp => tp.tokenId === token.id);
           
           // Try to get real-time price from CoinGecko
-          const livePrice = await getTokenPrice(token.symbol);
-          
-          return {
-            id: token.id,
-            symbol: token.symbol,
-            name: token.name,
-            logoUrl: token.logoUrl,
-            price: livePrice?.price || tokenPrice?.price || "0",
-            priceChange24h: livePrice?.priceChange24h || tokenPrice?.priceChange24h || "0",
-          };
+          try {
+            const livePrice = await getTokenPrice(token.symbol);
+            
+            // Update price in storage
+            if (livePrice) {
+              await storage.createOrUpdateTokenPrice({
+                tokenId: token.id,
+                price: livePrice.price,
+                priceChange24h: livePrice.priceChange24h,
+                volume24h: livePrice.volume24h || null
+              });
+            }
+            
+            return {
+              id: token.id,
+              symbol: token.symbol,
+              name: token.name,
+              logoUrl: token.logoUrl,
+              price: livePrice.price,
+              priceChange24h: livePrice.priceChange24h,
+              volume24h: livePrice.volume24h || "0",
+              marketCap: livePrice.marketCap || "0"
+            };
+          } catch (error) {
+            console.error(`Failed to fetch live price for ${token.symbol}:`, error);
+            // Use stored price data as fallback
+            return {
+              id: token.id,
+              symbol: token.symbol,
+              name: token.name,
+              logoUrl: token.logoUrl,
+              price: tokenPrice?.price || "0",
+              priceChange24h: tokenPrice?.priceChange24h || "0",
+              volume24h: tokenPrice?.volume24h || "0",
+              marketCap: "0"
+            };
+          }
         })
       );
       
       return res.json(result);
+    } catch (error) {
+      return handleApiError(res, error);
+    }
+  });
+  
+  // Get trending cryptocurrencies
+  app.get("/api/trending", async (req, res) => {
+    try {
+      const trendingCoins = await getTrendingCoins();
+      return res.json(trendingCoins);
+    } catch (error) {
+      return handleApiError(res, error);
+    }
+  });
+  
+  // Get global market data
+  app.get("/api/market/global", async (req, res) => {
+    try {
+      const globalData = await getGlobalMarketData();
+      return res.json(globalData);
+    } catch (error) {
+      return handleApiError(res, error);
+    }
+  });
+  
+  // Get detailed information for a specific coin
+  app.get("/api/coins/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const coinId = COINGECKO_ID_MAP[id.toUpperCase()] || id.toLowerCase();
+      
+      const response = await axios.get(
+        `${COINGECKO_API_URL}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
+      );
+      
+      const data = response.data;
+      
+      return res.json({
+        id: data.id,
+        symbol: data.symbol,
+        name: data.name,
+        logoUrl: data.image.large,
+        description: data.description.en,
+        marketCap: data.market_data.market_cap.usd,
+        marketCapRank: data.market_cap_rank,
+        fullyDilutedValuation: data.market_data.fully_diluted_valuation?.usd || null,
+        totalVolume: data.market_data.total_volume.usd,
+        high24h: data.market_data.high_24h.usd,
+        low24h: data.market_data.low_24h.usd,
+        priceChange24h: data.market_data.price_change_24h,
+        priceChangePercentage24h: data.market_data.price_change_percentage_24h,
+        priceChangePercentage7d: data.market_data.price_change_percentage_7d,
+        priceChangePercentage30d: data.market_data.price_change_percentage_30d,
+        marketCapChange24h: data.market_data.market_cap_change_24h,
+        marketCapChangePercentage24h: data.market_data.market_cap_change_percentage_24h,
+        circulatingSupply: data.market_data.circulating_supply,
+        totalSupply: data.market_data.total_supply,
+        maxSupply: data.market_data.max_supply,
+        ath: data.market_data.ath.usd,
+        athChangePercentage: data.market_data.ath_change_percentage.usd,
+        athDate: data.market_data.ath_date.usd,
+        atl: data.market_data.atl.usd,
+        atlChangePercentage: data.market_data.atl_change_percentage.usd,
+        atlDate: data.market_data.atl_date.usd,
+        lastUpdated: data.last_updated
+      });
+    } catch (error) {
+      return handleApiError(res, error);
+    }
+  });
+  
+  // Get market chart data for a specific coin
+  app.get("/api/coins/:id/chart", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { days = 7 } = req.query;
+      const coinId = COINGECKO_ID_MAP[id.toUpperCase()] || id.toLowerCase();
+      
+      const response = await axios.get(
+        `${COINGECKO_API_URL}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`
+      );
+      
+      const { prices, market_caps, total_volumes } = response.data;
+      
+      return res.json({
+        prices,
+        marketCaps: market_caps,
+        totalVolumes: total_volumes
+      });
     } catch (error) {
       return handleApiError(res, error);
     }
@@ -153,21 +331,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!token || !tokenPrice) return null;
           
           // Try to get real-time price from CoinGecko
-          const livePrice = await getTokenPrice(token.symbol);
-          const price = livePrice?.price || tokenPrice.price;
-          
-          return {
-            id: balance.id,
-            token: {
-              id: token.id,
-              symbol: token.symbol,
-              name: token.name,
-              logoUrl: token.logoUrl,
-            },
-            balance: balance.balance,
-            value: (parseFloat(balance.balance) * parseFloat(price)).toFixed(2),
-            price: price,
-          };
+          try {
+            const livePrice = await getTokenPrice(token.symbol);
+            const price = livePrice?.price || tokenPrice.price;
+            
+            return {
+              id: balance.id,
+              token: {
+                id: token.id,
+                symbol: token.symbol,
+                name: token.name,
+                logoUrl: token.logoUrl,
+              },
+              balance: balance.balance,
+              value: (parseFloat(balance.balance) * parseFloat(price)).toFixed(2),
+              price: price,
+              priceChange24h: livePrice?.priceChange24h || tokenPrice.priceChange24h || "0",
+            };
+          } catch (error) {
+            // Use stored price data as fallback
+            return {
+              id: balance.id,
+              token: {
+                id: token.id,
+                symbol: token.symbol,
+                name: token.name,
+                logoUrl: token.logoUrl,
+              },
+              balance: balance.balance,
+              value: (parseFloat(balance.balance) * parseFloat(tokenPrice.price)).toFixed(2),
+              price: tokenPrice.price,
+              priceChange24h: tokenPrice.priceChange24h || "0",
+            };
+          }
         })
       );
       
@@ -229,7 +425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           txHash: tx.txHash,
           networkFee: tx.networkFee,
           createdAt: tx.createdAt,
-          timestamp: tx.createdAt.getTime(),
+          timestamp: tx.createdAt ? tx.createdAt.getTime() : Date.now(),
         };
       });
       
@@ -266,18 +462,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Wallet address is required" });
       }
       
-      // Get token prices
-      const fromTokenPrice = await storage.getTokenPrice(fromToken.id);
-      const toTokenPrice = await storage.getTokenPrice(toToken.id);
+      // Get token prices from API
+      let fromTokenPrice;
+      let toTokenPrice;
       
-      if (!fromTokenPrice || !toTokenPrice) {
-        return res.status(404).json({ message: "Token price not found" });
+      try {
+        // Try to get live prices
+        fromTokenPrice = await getTokenPrice(fromToken.symbol);
+        toTokenPrice = await getTokenPrice(toToken.symbol);
+      } catch (error) {
+        console.error("Error fetching live prices for swap:", error);
+        // Fallback to stored prices
+        const storedFromPrice = await storage.getTokenPrice(fromToken.id);
+        const storedToPrice = await storage.getTokenPrice(toToken.id);
+        
+        if (!storedFromPrice || !storedToPrice) {
+          return res.status(404).json({ message: "Token prices not available" });
+        }
+        
+        fromTokenPrice = {
+          price: storedFromPrice.price,
+          priceChange24h: storedFromPrice.priceChange24h || "0"
+        };
+        
+        toTokenPrice = {
+          price: storedToPrice.price,
+          priceChange24h: storedToPrice.priceChange24h || "0"
+        };
       }
       
       // Calculate exchange rate and amount to receive
       const fromAmount = parseFloat(swapData.fromAmount);
       const rate = parseFloat(toTokenPrice.price) / parseFloat(fromTokenPrice.price);
-      const toAmount = (fromAmount * rate).toFixed(toToken.decimals);
+      const toAmount = (fromAmount * rate).toFixed(toToken.decimals || 6);
       
       // Check if user has sufficient balance
       const userFromBalance = await storage.getUserBalance(user.id, fromToken.id);
@@ -491,6 +708,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  return createServer(app);
 }
