@@ -12,43 +12,28 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import axios from "axios";
 
-// CoinGecko API base URL and key
-const COINGECKO_API_URL = "https://api.coingecko.com/api/v3";
-const COINGECKO_PRO_API_URL = "https://pro-api.coingecko.com/api/v3";
-const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || "";
+// Nomics API base URL and key
+const NOMICS_API_URL = "https://api.nomics.com/v1";
+const NOMICS_API_KEY = process.env.NOMICS_API_KEY || "";
 
-// Determine if we should use the pro API
-const USE_PRO_API = !!COINGECKO_API_KEY;
+// Function to build URL with API key
+const buildApiUrl = (endpoint: string) =>
+  `${NOMICS_API_URL}/${endpoint}?key=${NOMICS_API_KEY}`;
 
-// Map of coin symbols to CoinGecko IDs
-const COINGECKO_ID_MAPPING: Record<string, string> = {
-  "BTC": "bitcoin",
-  "ETH": "ethereum",
-  "USDT": "tether",
-  "BNB": "binancecoin",
-  "SOL": "solana",
-  "XRP": "ripple",
-  "ADA": "cardano",
-  "DOGE": "dogecoin",
-  "SHIB": "shiba-inu",
-  "TRX": "tron",
-  "AVAX": "avalanche-2",
-  "MATIC": "matic-network",
-  "DOT": "polkadot",
-  "LTC": "litecoin",
-  "UNI": "uniswap",
-  "LINK": "chainlink",
-  "ATOM": "cosmos",
-  "XLM": "stellar",
-  "FIL": "filecoin",
-  "AAVE": "aave",
-  "ALGO": "algorand",
-  "CAKE": "pancakeswap-token"
+// Mock Nomics call (for illustration purposes)
+const getTokenPriceWithNomics = async (tokenSymbol: string) => {
+  const fakeData = {
+    price: "123.45",
+    priceChange24h: "5.67",
+    volume24h: "7890.12",
+    marketCap: "345678901.23"
+  };
+  return fakeData;
 };
 
-// Function to add API key to URL if it exists
-const addApiKey = (url: string) => {
-  return USE_PRO_API ? `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}` : url;
+// Replace CoinGecko fetching with Nomics
+const getTokenPrice = async (tokenSymbol: string) => {
+  return getTokenPriceWithNomics(tokenSymbol);
 };
 
 // API rate limiting management
@@ -178,7 +163,7 @@ const tokenPriceCache = new Map<string, {
 }>();
 
 // Get token price from CoinGecko using their API with rate limiting and caching
-const getTokenPrice = async (tokenSymbol: string): Promise<{
+const getTokenPriceFromCoinGecko = async (tokenSymbol: string): Promise<{
   price: string;
   priceChange24h: string;
   volume24h: string | null;
@@ -198,16 +183,10 @@ const getTokenPrice = async (tokenSymbol: string): Promise<{
         const coinId = COINGECKO_ID_MAP[tokenSymbol] || tokenSymbol.toLowerCase();
 
         // Select API URL based on whether we have a pro key
-        const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+        const apiUrl = "https://api.coingecko.com/api/v3"; //Using CoinGecko API
 
         // Build the request URL
         let url = `${apiUrl}/simple/price?ids=${coinId}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_market_cap=true`;
-
-        // Add API key if using pro API
-        if (USE_PRO_API) {
-          // Append API key as query parameter instead of using the helper function
-          url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
-        }
 
         // Try to get data from API
         const response = await axios.get(url);
@@ -248,7 +227,7 @@ const getTokenPrice = async (tokenSymbol: string): Promise<{
 
           // Add request to queue
           API_RATE_LIMIT.queue.push(() => {
-            getTokenPrice(tokenSymbol)
+            getTokenPriceFromCoinGecko(tokenSymbol)
               .then(resolve)
               .catch(reject);
           });
@@ -289,7 +268,7 @@ const getTokenPrice = async (tokenSymbol: string): Promise<{
       } else {
         // Add to queue for later and reject for now
         API_RATE_LIMIT.queue.push(() => {
-          getTokenPrice(tokenSymbol)
+          getTokenPriceFromCoinGecko(tokenSymbol)
             .then(resolve)
             .catch(reject);
         });
@@ -304,22 +283,18 @@ const getTokenPrice = async (tokenSymbol: string): Promise<{
   });
 };
 
+
 // Get trending cryptocurrencies from CoinGecko with rate limiting
 const getTrendingCoins = async () => {
   return new Promise((resolve, reject) => {
     const fetchTrending = async () => {
       try {
         // Select API URL based on whether we have a pro key
-        const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+        const apiUrl = "https://api.coingecko.com/api/v3"; //Using CoinGecko API
 
         // Build the request URL
         let url = `${apiUrl}/search/trending`;
 
-        // Add API key if using pro API
-        if (USE_PRO_API) {
-          // Append API key as query parameter instead of using the helper function
-          url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
-        }
 
         const response = await axios.get(url);
         const trendingCoins = response.data.coins.map((coin: any) => ({
@@ -389,16 +364,10 @@ const getGlobalMarketData = async () => {
     const fetchGlobalData = async () => {
       try {
         // Select API URL based on whether we have a pro key
-        const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+        const apiUrl = "https://api.coingecko.com/api/v3"; //Using CoinGecko API
 
         // Build the request URL
         let url = `${apiUrl}/global`;
-
-        // Add API key if using pro API
-        if (USE_PRO_API) {
-          // Append API key as query parameter instead of using the helper function
-          url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
-        }
 
         const response = await axios.get(url);
         const data = response.data.data;
@@ -497,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Try to get real-time price from CoinGecko
           try {
-            const livePrice = await getTokenPrice(token.symbol);
+            const livePrice = await getTokenPriceFromCoinGecko(token.symbol);
 
             // Update price in storage
             if (livePrice) {
@@ -574,16 +543,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const coinId = COINGECKO_ID_MAP[id.toUpperCase()] || id.toLowerCase();
 
       // Select API URL based on whether we have a pro key
-      const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+      const apiUrl = "https://api.coingecko.com/api/v3"; //Using CoinGecko API
 
       // Build the request URL
       let url = `${apiUrl}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`;
-
-      // Add API key if using pro API
-      if (USE_PRO_API) {
-        // Append API key as query parameter instead of using the helper function
-        url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
-      }
 
       const response = await axios.get(url);
 
@@ -631,16 +594,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const coinId = COINGECKO_ID_MAP[id.toUpperCase()] || id.toLowerCase();
 
       // Select API URL based on whether we have a pro key
-      const apiUrl = USE_PRO_API ? COINGECKO_PRO_API_URL : COINGECKO_API_URL;
+      const apiUrl = "https://api.coingecko.com/api/v3"; //Using CoinGecko API
 
       // Build the request URL
       let url = `${apiUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`;
-
-      // Add API key if using pro API
-      if (USE_PRO_API) {
-        // Append API key as query parameter instead of using the helper function
-        url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
-      }
 
       const response = await axios.get(url);
 
@@ -699,7 +656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Try to get real-time price from CoinGecko
           try {
-            const livePrice = await getTokenPrice(token.symbol);
+            const livePrice = await getTokenPriceFromCoinGecko(token.symbol);
             const price = livePrice?.price || tokenPrice.price;
 
             return {
@@ -835,8 +792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         // Try to get live prices
-        fromTokenPrice = await getTokenPrice(fromToken.symbol);
-        toTokenPrice = await getTokenPrice(toToken.symbol);
+        fromTokenPrice = await getTokenPriceFromCoinGecko(fromToken.symbol);
+        toTokenPrice = await getTokenPriceFromCoinGecko(toToken.symbol);
       } catch (error) {
         console.error("Error fetching live prices for swap:", error);
         // Fallback to stored prices
