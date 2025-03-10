@@ -56,7 +56,7 @@ const API_RATE_LIMIT = {
   isRateLimited: false,
   resetTime: 0,
   queue: [] as (() => void)[],
-  batchSize: 3, // Number of requests to process at once
+  batchSize: 5, // Increase the number of requests to process at once
   processingQueue: false,
   limit: 30 // CoinGecko's rate limit is 30 requests per minute for free tier
 };
