@@ -205,7 +205,8 @@ const getTokenPrice = async (tokenSymbol: string): Promise<{
 
         // Add API key if using pro API
         if (USE_PRO_API) {
-          url = addApiKey(url);
+          // Append API key as query parameter instead of using the helper function
+          url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
         }
 
         // Try to get data from API
@@ -316,7 +317,8 @@ const getTrendingCoins = async () => {
 
         // Add API key if using pro API
         if (USE_PRO_API) {
-          url = addApiKey(url);
+          // Append API key as query parameter instead of using the helper function
+          url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
         }
 
         const response = await axios.get(url);
@@ -394,7 +396,8 @@ const getGlobalMarketData = async () => {
 
         // Add API key if using pro API
         if (USE_PRO_API) {
-          url = addApiKey(url);
+          // Append API key as query parameter instead of using the helper function
+          url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
         }
 
         const response = await axios.get(url);
@@ -578,7 +581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add API key if using pro API
       if (USE_PRO_API) {
-        url = addApiKey(url);
+        // Append API key as query parameter instead of using the helper function
+        url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
       }
 
       const response = await axios.get(url);
@@ -634,7 +638,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add API key if using pro API
       if (USE_PRO_API) {
-        url = addApiKey(url);
+        // Append API key as query parameter instead of using the helper function
+        url = `${url}${url.includes('?') ? '&' : '?'}x_cg_pro_api_key=${COINGECKO_API_KEY}`;
       }
 
       const response = await axios.get(url);

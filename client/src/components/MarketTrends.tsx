@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { ArrowUpCircle, ArrowDownRight } from "lucide-react";
 import { TokenPrice } from "@/lib/api";
 
 const MarketTrends = () => {
@@ -104,7 +103,7 @@ const MarketTrends = () => {
   const formatCurrency = (value: string) => {
     const num = parseFloat(value);
     if (isNaN(num)) return "$0.00";
-    
+
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -116,7 +115,7 @@ const MarketTrends = () => {
   const formatPercentage = (value: string) => {
     const num = parseFloat(value);
     if (isNaN(num)) return "0.00%";
-    
+
     return `${num > 0 ? '+' : ''}${num.toFixed(2)}%`;
   };
 
@@ -212,7 +211,7 @@ const MarketTrends = () => {
                     <div className="text-right">
                       <div className="font-mono">{formatCurrency(token.price)}</div>
                       <div className="text-xs text-error flex items-center justify-end">
-                        <ArrowDownCircle className="h-3 w-3 mr-1" />
+                        <ArrowDownRight className="h-3 w-3 mr-1" />
                         {formatPercentage(token.priceChange24h)}
                       </div>
                     </div>

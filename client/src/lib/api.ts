@@ -178,7 +178,7 @@ export const fetchTokens = async (): Promise<Token[]> => {
 
 export const fetchTokenPrices = async (): Promise<TokenPrice[]> => {
   try {
-    const response = await api.get('/prices');
+    const response = await api.get('/api/prices');
     return response.data;
   } catch (error) {
     return handleApiError(error);
@@ -196,7 +196,7 @@ export const fetchChartData = async (coinSymbol: string, days: string = '1'): Pr
 
 export const fetchPortfolio = async (walletAddress: string): Promise<Portfolio> => {
   try {
-    const response = await api.get(`/portfolio/${walletAddress}`);
+    const response = await api.get(`/api/portfolio/${walletAddress}`);
     return response.data;
   } catch (error) {
     return handleApiError(error);
@@ -205,7 +205,7 @@ export const fetchPortfolio = async (walletAddress: string): Promise<Portfolio> 
 
 export const fetchTransactions = async (walletAddress: string): Promise<Transaction[]> => {
   try {
-    const response = await api.get(`/transactions/${walletAddress}`);
+    const response = await api.get(`/api/transactions/${walletAddress}`);
     return response.data;
   } catch (error) {
     return handleApiError(error);
