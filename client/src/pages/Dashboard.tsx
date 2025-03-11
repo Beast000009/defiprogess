@@ -1,48 +1,45 @@
-import PriceOverview from "@/components/PriceOverview";
 import PriceChart from "@/components/PriceChart";
 import PortfolioOverview from "@/components/PortfolioOverview";
 import TransactionHistoryItem from "@/components/TransactionHistoryItem";
-import MarketTrends from "@/components/MarketTrends";
 import SwapInterface from "@/components/SwapInterface";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import SpotTradingInterface from "@/components/SpotTradingInterface";
 import { useWeb3 } from "@/lib/web3";
 import { useQuery } from "@tanstack/react-query";
-import { fetchTransactions } from "@/lib/api";
+import { fetchTransactions, fetchTokenPrices, TokenPrice, formatPriceChange } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { useState } from "react";
 
 const Dashboard = () => {
   const { address } = useWeb3();
-  
+  const [selectedToken, setSelectedToken] = useState<string>("ETH");
+
   const { data: transactions } = useQuery({
     queryKey: address ? [`/api/transactions/${address}`] : null,
     enabled: !!address
   });
 
+  const { data: tokenPrices } = useQuery<TokenPrice[]>({
+    queryKey: ['/api/prices'],
+    refetchInterval: 30000
+  });
+
   return (
     <div>
-      {/* Market Overview */}
-      <section className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold">Market Overview</h2>
-          <button 
-            className="text-sm text-neutral-400 hover:text-white"
-            onClick={() => window.location.reload()}
-          >
-            <i className="ri-refresh-line mr-1"></i> Refresh
-          </button>
-        </div>
-        
-        <PriceOverview />
-      </section>
-
       {/* Main Features Area */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left Panel (Swap & Spot Trading) */}
         <div className="xl:col-span-2 space-y-6">
           {/* Price Chart */}
-          <PriceChart />
+          <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Price Chart</h2>
+              <span className="text-neutral-400">{selectedToken}/USD</span>
+            </div>
+            <PriceChart tokenSymbol={selectedToken} />
+          </div>
 
           {/* Swap and Trade Tabs */}
           <div className="bg-neutral-800 rounded-xl border border-neutral-700">
@@ -63,11 +60,11 @@ const Dashboard = () => {
                   </TabsTrigger>
                 </TabsList>
               </div>
-              
+
               <TabsContent value="swap">
                 <SwapInterface />
               </TabsContent>
-              
+
               <TabsContent value="trade">
                 <SpotTradingInterface />
               </TabsContent>
@@ -84,10 +81,10 @@ const Dashboard = () => {
                 </Button>
               </Link>
             </div>
-            
+
             <div className="space-y-3">
               {transactions && transactions.length > 0 ? (
-                transactions.slice(0, 3).map((transaction) => (
+                transactions.slice(0, 3).map((transaction: any) => (
                   <TransactionHistoryItem key={transaction.id} transaction={transaction} />
                 ))
               ) : address ? (
@@ -102,14 +99,45 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        
-        {/* Right Panel (Portfolio) */}
+
+        {/* Right Panel */}
         <div className="space-y-6">
           {/* Portfolio Overview */}
           <PortfolioOverview />
-          
-          {/* Market Trends */}
-          <MarketTrends />
+
+          {/* Cryptocurrency List */}
+          <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
+            <h3 className="font-medium mb-4">Available Cryptocurrencies</h3>
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-2">
+                {tokenPrices?.map((token) => (
+                  <button
+                    key={token.id}
+                    onClick={() => setSelectedToken(token.symbol)}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
+                      selectedToken === token.symbol ? 'bg-primary bg-opacity-20 text-primary-light' : 'bg-neutral-700 hover:bg-neutral-600'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-neutral-600 flex items-center justify-center overflow-hidden mr-2">
+                        <img src={token.logoUrl} alt={token.symbol} className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-medium">{token.symbol}</div>
+                        <div className="text-xs text-neutral-400">{token.name}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-mono">${parseFloat(token.price).toFixed(2)}</div>
+                      <div className={`text-xs ${parseFloat(token.priceChange24h) >= 0 ? 'text-success' : 'text-error'}`}>
+                        {formatPriceChange(token.priceChange24h)}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         </div>
       </div>
     </div>
