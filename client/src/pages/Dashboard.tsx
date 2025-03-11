@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchTransactions, fetchTokenPrices, TokenPrice, formatPriceChange } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,22 +29,34 @@ const Dashboard = () => {
   // Increase refetch interval to 5 minutes to reduce frequent updates
   const { data: tokenPrices, isLoading } = useQuery<TokenPrice[]>({
     queryKey: ['/api/prices'],
-    refetchInterval: 300000, // Changed from 30000 (30s) to 300000 (5min)
-    refetchOnWindowFocus: false // Prevent refetch on window focus
+    refetchInterval: 300000, // 5 minutes
+    refetchOnWindowFocus: false
   });
 
-  // Filter tokens based on search query
-  const filteredTokens = tokenPrices?.filter(token => 
-    token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Get the selected token data
+  const selectedTokenData = useMemo(() => {
+    return tokenPrices?.find(t => t.symbol === selectedToken);
+  }, [tokenPrices, selectedToken]);
 
-  // Sort tokens by price change
-  const sortedTokens = [...(filteredTokens || [])].sort((a, b) => {
-    const changeA = parseFloat(a.priceChange24h);
-    const changeB = parseFloat(b.priceChange24h);
-    return sortOrder === "asc" ? changeA - changeB : changeB - changeA;
-  });
+  // Filter and sort tokens - only for the list, not affecting the graph
+  const filteredAndSortedTokens = useMemo(() => {
+    if (!tokenPrices) return [];
+
+    let filtered = tokenPrices;
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = tokenPrices.filter(token => 
+        token.name.toLowerCase().includes(query) ||
+        token.symbol.toLowerCase().includes(query)
+      );
+    }
+
+    return [...filtered].sort((a, b) => {
+      const changeA = parseFloat(a.priceChange24h);
+      const changeB = parseFloat(b.priceChange24h);
+      return sortOrder === "asc" ? changeA - changeB : changeB - changeA;
+    });
+  }, [tokenPrices, searchQuery, sortOrder]);
 
   return (
     <div>
@@ -56,17 +68,17 @@ const Dashboard = () => {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-semibold">{selectedToken}/USD</h2>
-                {tokenPrices?.find(t => t.symbol === selectedToken) && (
+                {selectedTokenData && (
                   <div className="flex items-center mt-1 text-sm text-neutral-400">
                     <span className="font-mono mr-3">
-                      ${parseFloat(tokenPrices.find(t => t.symbol === selectedToken)!.price).toFixed(2)}
+                      ${parseFloat(selectedTokenData.price).toFixed(2)}
                     </span>
                     <span className={`flex items-center ${
-                      parseFloat(tokenPrices.find(t => t.symbol === selectedToken)!.priceChange24h) >= 0 
+                      parseFloat(selectedTokenData.priceChange24h) >= 0 
                         ? 'text-success' 
                         : 'text-error'
                     }`}>
-                      {formatPriceChange(tokenPrices.find(t => t.symbol === selectedToken)!.priceChange24h)}
+                      {formatPriceChange(selectedTokenData.priceChange24h)}
                     </span>
                   </div>
                 )}
@@ -123,7 +135,7 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {sortedTokens?.map((token) => (
+                  {filteredAndSortedTokens.map((token) => (
                     <button
                       key={token.id}
                       onClick={() => setSelectedToken(token.symbol)}
