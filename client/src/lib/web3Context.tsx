@@ -1,6 +1,7 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { ethers } from 'ethers';
 import { useToast } from '@/hooks/use-toast';
+import { TokenSwapService } from '@/contracts/TokenSwap';
 
 // Define window ethereum type
 declare global {
@@ -17,8 +18,16 @@ interface Web3ContextType {
   chainId: number | null;
   isConnected: boolean;
   isConnecting: boolean;
+  swapService: TokenSwapService | null;
   connectWallet: (providerType?: string) => Promise<void>;
   disconnectWallet: () => void;
+  executeSwap: (params: {
+    amountIn: string;
+    amountOutMin: string;
+    tokenIn: string;
+    tokenOut: string;
+  }) => Promise<ethers.TransactionResponse>;
+  getSwapEstimate: (amountIn: string, tokenIn: string, tokenOut: string) => Promise<string>;
 }
 
 // Create context with default values
@@ -29,8 +38,11 @@ const Web3Context = createContext<Web3ContextType>({
   chainId: null,
   isConnected: false,
   isConnecting: false,
+  swapService: null,
   connectWallet: async () => {},
   disconnectWallet: () => {},
+  executeSwap: async () => { throw new Error('Not implemented'); },
+  getSwapEstimate: async () => { throw new Error('Not implemented'); },
 });
 
 // Provider props interface
@@ -46,6 +58,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   const [chainId, setChainId] = useState<number | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [swapService, setSwapService] = useState<TokenSwapService | null>(null);
   const { toast } = useToast();
 
   const connectWallet = async (providerType = 'metamask') => {
@@ -64,21 +77,30 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       // Request account access
       const browserProvider = new ethers.BrowserProvider(window.ethereum);
       await browserProvider.send("eth_requestAccounts", []);
-      
+
       // Get signer and address
       const ethSigner = await browserProvider.getSigner();
       const signerAddress = await ethSigner.getAddress();
       const network = await browserProvider.getNetwork();
-      
+      const networkChainId = Number(network.chainId);
+
+      // Initialize swap service
+      const swapServiceInstance = new TokenSwapService(
+        browserProvider,
+        ethSigner,
+        networkChainId
+      );
+
       setProvider(browserProvider);
       setSigner(ethSigner);
       setAddress(signerAddress);
-      setChainId(Number(network.chainId));
+      setChainId(networkChainId);
       setIsConnected(true);
-      
+      setSwapService(swapServiceInstance);
+
       // Store the address in localStorage for persistence
       localStorage.setItem('walletAddress', signerAddress);
-      
+
       toast({
         title: "Wallet Connected",
         description: `Connected to ${signerAddress.substring(0, 6)}...${signerAddress.substring(signerAddress.length - 4)}`,
@@ -101,12 +123,44 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     setAddress(null);
     setChainId(null);
     setIsConnected(false);
+    setSwapService(null);
     localStorage.removeItem('walletAddress');
-    
+
     toast({
       title: "Wallet Disconnected",
       description: "Your wallet has been disconnected",
     });
+  };
+
+  const executeSwap = async (params: {
+    amountIn: string;
+    amountOutMin: string;
+    tokenIn: string;
+    tokenOut: string;
+  }) => {
+    if (!swapService) {
+      throw new Error('Swap service not initialized');
+    }
+
+    const deadline = Math.floor(Date.now() / 1000) + 20 * 60; // 20 minutes from now
+    return swapService.executeSwap(
+      params.amountIn,
+      params.amountOutMin,
+      params.tokenIn,
+      params.tokenOut,
+      deadline
+    );
+  };
+
+  const getSwapEstimate = async (
+    amountIn: string,
+    tokenIn: string,
+    tokenOut: string
+  ) => {
+    if (!swapService) {
+      throw new Error('Swap service not initialized');
+    }
+    return swapService.getSwapAmount(amountIn, tokenIn, tokenOut);
   };
 
   // Check for saved wallet address on mount
@@ -130,7 +184,12 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       };
 
       const handleChainChanged = (chainIdHex: string) => {
-        setChainId(parseInt(chainIdHex, 16));
+        const newChainId = parseInt(chainIdHex, 16);
+        setChainId(newChainId);
+        // Reinitialize swap service with new chain ID
+        if (provider && signer) {
+          setSwapService(new TokenSwapService(provider, signer, newChainId));
+        }
       };
 
       window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -141,7 +200,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
       };
     }
-  }, [address]);
+  }, [address, provider, signer]);
 
   return (
     <Web3Context.Provider 
@@ -152,8 +211,11 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         chainId,
         isConnected,
         isConnecting,
+        swapService,
         connectWallet,
-        disconnectWallet
+        disconnectWallet,
+        executeSwap,
+        getSwapEstimate
       }}
     >
       {children}
