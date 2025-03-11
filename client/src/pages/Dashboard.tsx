@@ -26,11 +26,12 @@ const Dashboard = () => {
     enabled: !!address
   });
 
-  // Increase refetch interval to 5 minutes to reduce frequent updates
   const { data: tokenPrices, isLoading } = useQuery<TokenPrice[]>({
     queryKey: ['/api/prices'],
-    refetchInterval: 300000, // 5 minutes
-    refetchOnWindowFocus: false
+    // Remove refetchInterval to prevent automatic updates
+    refetchOnWindowFocus: false,
+    staleTime: Infinity, // Keep the data fresh indefinitely
+    cacheTime: Infinity // Never remove from cache
   });
 
   // Get the selected token data
