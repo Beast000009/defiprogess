@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useWeb3 } from '@/lib/web3';
 import WalletConnectModal from './WalletConnectModal';
@@ -13,7 +13,6 @@ const Layout = ({ children }: LayoutProps) => {
   const [location] = useLocation();
   const { isConnected, address, disconnectWallet } = useWeb3();
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { data: gasPrice } = useQuery({ 
     queryKey: ['/api/gas-price'],
@@ -91,25 +90,13 @@ const Layout = ({ children }: LayoutProps) => {
               </span>
               <h1 className="text-xl font-semibold">DeFi Exchange</h1>
             </div>
-            
-            {/* Search Bar */}
-            <div className="hidden md:flex items-center flex-1 max-w-md mx-4">
-              <div className="relative w-full">
-                <input 
-                  type="text" 
-                  placeholder="Search tokens, pairs..." 
-                  className="w-full py-2 pl-10 pr-4 rounded-lg bg-neutral-700 border border-neutral-600 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                />
-                <i className="ri-search-line absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400"></i>
-              </div>
-            </div>
-            
+
             {/* Connect Wallet Button */}
             <div className="flex items-center gap-4">
               <button className="hidden md:inline-flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 bg-neutral-700 hover:bg-neutral-600 px-3 py-1.5 rounded-lg">
                 <i className="ri-moon-line"></i>
               </button>
-              
+
               {isConnected ? (
                 <div className="flex items-center gap-2">
                   <span className="hidden md:inline-block text-sm text-neutral-300">

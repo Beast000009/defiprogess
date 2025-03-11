@@ -26,9 +26,11 @@ const Dashboard = () => {
     enabled: !!address
   });
 
+  // Increase refetch interval to 5 minutes to reduce frequent updates
   const { data: tokenPrices, isLoading } = useQuery<TokenPrice[]>({
     queryKey: ['/api/prices'],
-    refetchInterval: 30000
+    refetchInterval: 300000, // Changed from 30000 (30s) to 300000 (5min)
+    refetchOnWindowFocus: false // Prevent refetch on window focus
   });
 
   // Filter tokens based on search query
@@ -70,8 +72,14 @@ const Dashboard = () => {
                 )}
               </div>
             </div>
-            <div className="h-[400px]">
-              <PriceChart tokenSymbol={selectedToken} />
+            <div className="h-[400px] relative">
+              {isLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-neutral-800/50">
+                  <Skeleton className="w-full h-full" />
+                </div>
+              ) : (
+                <PriceChart tokenSymbol={selectedToken} />
+              )}
             </div>
           </div>
 
