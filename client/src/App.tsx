@@ -11,6 +11,7 @@ import TransactionHistory from "@/pages/TransactionHistory";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/Layout";
 import { Web3Provider } from "@/lib/web3Context";
+import { ThemeProvider } from "@/lib/theme";
 
 function Router() {
   return (
@@ -30,7 +31,6 @@ function Router() {
 function App() {
   // Add custom font styles to match design
   useEffect(() => {
-    document.documentElement.classList.add('dark');
     document.body.className = "font-sans text-neutral-50 bg-neutral-900 min-h-screen";
 
     // Add custom scrollbar styles
@@ -60,10 +60,12 @@ function App() {
 
   return (
     <Web3Provider>
-      <QueryClientProvider client={queryClient}>
-        <Router />
-        <Toaster />
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <Router />
+          <Toaster />
+        </QueryClientProvider>
+      </ThemeProvider>
     </Web3Provider>
   );
 }

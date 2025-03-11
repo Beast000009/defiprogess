@@ -4,6 +4,8 @@ import { useWeb3 } from '@/lib/web3';
 import WalletConnectModal from './WalletConnectModal';
 import { useQuery } from '@tanstack/react-query';
 import { fetchGasPrice } from '@/lib/api';
+import { useTheme } from '@/lib/theme';
+import { Moon, Sun } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -13,6 +15,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [location] = useLocation();
   const { isConnected, address, disconnectWallet } = useWeb3();
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const { data: gasPrice } = useQuery({ 
     queryKey: ['/api/gas-price'],
@@ -93,8 +96,11 @@ const Layout = ({ children }: LayoutProps) => {
 
             {/* Connect Wallet Button */}
             <div className="flex items-center gap-4">
-              <button className="hidden md:inline-flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 bg-neutral-700 hover:bg-neutral-600 px-3 py-1.5 rounded-lg">
-                <i className="ri-moon-line"></i>
+              <button 
+                onClick={toggleTheme}
+                className="inline-flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 bg-neutral-700 hover:bg-neutral-600 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
               </button>
 
               {isConnected ? (
