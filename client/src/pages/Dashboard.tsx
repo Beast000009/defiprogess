@@ -11,130 +11,206 @@ import { fetchTransactions, fetchTokenPrices, TokenPrice, formatPriceChange } fr
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { useState } from "react";
+import { Search, ChevronUp, ChevronDown } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard = () => {
   const { address } = useWeb3();
   const [selectedToken, setSelectedToken] = useState<string>("ETH");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const { data: transactions } = useQuery({
     queryKey: address ? [`/api/transactions/${address}`] : null,
     enabled: !!address
   });
 
-  const { data: tokenPrices } = useQuery<TokenPrice[]>({
+  const { data: tokenPrices, isLoading } = useQuery<TokenPrice[]>({
     queryKey: ['/api/prices'],
     refetchInterval: 30000
+  });
+
+  // Filter tokens based on search query
+  const filteredTokens = tokenPrices?.filter(token => 
+    token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Sort tokens by price change
+  const sortedTokens = [...(filteredTokens || [])].sort((a, b) => {
+    const changeA = parseFloat(a.priceChange24h);
+    const changeB = parseFloat(b.priceChange24h);
+    return sortOrder === "asc" ? changeA - changeB : changeB - changeA;
   });
 
   return (
     <div>
       <div className="space-y-6">
         {/* Chart and Token List Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
           {/* Price Chart */}
-          <div className="md:col-span-1 bg-neutral-800 rounded-xl border border-neutral-700 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Price Chart</h2>
-              <span className="text-neutral-400">{selectedToken}/USD</span>
+          <div className="lg:col-span-4 bg-neutral-800 rounded-xl border border-neutral-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-semibold">{selectedToken}/USD</h2>
+                {tokenPrices?.find(t => t.symbol === selectedToken) && (
+                  <div className="flex items-center mt-1 text-sm text-neutral-400">
+                    <span className="font-mono mr-3">
+                      ${parseFloat(tokenPrices.find(t => t.symbol === selectedToken)!.price).toFixed(2)}
+                    </span>
+                    <span className={`flex items-center ${
+                      parseFloat(tokenPrices.find(t => t.symbol === selectedToken)!.priceChange24h) >= 0 
+                        ? 'text-success' 
+                        : 'text-error'
+                    }`}>
+                      {formatPriceChange(tokenPrices.find(t => t.symbol === selectedToken)!.priceChange24h)}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-            <PriceChart tokenSymbol={selectedToken} />
+            <div className="h-[400px]">
+              <PriceChart tokenSymbol={selectedToken} />
+            </div>
           </div>
 
           {/* Cryptocurrency List */}
-          <div className="md:col-span-1 bg-neutral-800 rounded-xl border border-neutral-700 p-4">
-            <h3 className="font-medium mb-4">Available Cryptocurrencies</h3>
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-2">
-                {tokenPrices?.map((token) => (
-                  <button
-                    key={token.id}
-                    onClick={() => setSelectedToken(token.symbol)}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      selectedToken === token.symbol ? 'bg-primary bg-opacity-20 text-primary-light' : 'bg-neutral-700 hover:bg-neutral-600'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-neutral-600 flex items-center justify-center overflow-hidden mr-2">
-                        <img src={token.logoUrl} alt={token.symbol} className="w-5 h-5" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-medium">{token.symbol}</div>
-                        <div className="text-xs text-neutral-400">{token.name}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-mono">${parseFloat(token.price).toFixed(2)}</div>
-                      <div className={`text-xs ${parseFloat(token.priceChange24h) >= 0 ? 'text-success' : 'text-error'}`}>
-                        {formatPriceChange(token.priceChange24h)}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+          <div className="lg:col-span-3 bg-neutral-800 rounded-xl border border-neutral-700 p-6">
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Cryptocurrencies</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                  className="text-neutral-400 hover:text-white"
+                >
+                  {sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
               </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                <Input
+                  placeholder="Search tokens..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 bg-neutral-700 border-neutral-600"
+                />
+              </div>
+            </div>
+
+            <ScrollArea className="h-[360px] pr-4">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4 p-3">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[100px]" />
+                        <Skeleton className="h-4 w-[70px]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sortedTokens?.map((token) => (
+                    <button
+                      key={token.id}
+                      onClick={() => setSelectedToken(token.symbol)}
+                      className={`w-full flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
+                        selectedToken === token.symbol 
+                          ? 'bg-primary bg-opacity-20 border border-primary/30' 
+                          : 'bg-neutral-700 hover:bg-neutral-600 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 rounded-full bg-neutral-600 flex items-center justify-center overflow-hidden mr-3">
+                          <img src={token.logoUrl} alt={token.symbol} className="w-6 h-6" />
+                        </div>
+                        <div className="text-left">
+                          <div className={`font-medium ${selectedToken === token.symbol ? 'text-primary-light' : ''}`}>
+                            {token.symbol}
+                          </div>
+                          <div className="text-sm text-neutral-400">{token.name}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono mb-1">${parseFloat(token.price).toFixed(2)}</div>
+                        <div className={`text-sm flex items-center justify-end ${
+                          parseFloat(token.priceChange24h) >= 0 ? 'text-success' : 'text-error'
+                        }`}>
+                          {parseFloat(token.priceChange24h) >= 0 ? 
+                            <ChevronUp className="w-4 h-4 mr-1" /> : 
+                            <ChevronDown className="w-4 h-4 mr-1" />
+                          }
+                          {formatPriceChange(token.priceChange24h)}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </ScrollArea>
           </div>
         </div>
 
         {/* Trading Interface */}
-        <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
-          <div className="space-y-6">
-            {/* Swap and Trade Tabs */}
-            <div className="bg-neutral-800 rounded-xl border border-neutral-700">
-              <Tabs defaultValue="swap">
-                <div className="border-b border-neutral-700">
-                  <TabsList className="border-b-0 bg-transparent">
-                    <TabsTrigger 
-                      value="swap" 
-                      className="px-6 py-3 font-medium text-neutral-400 data-[state=active]:text-primary-light data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-                    >
-                      Swap
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="trade" 
-                      className="px-6 py-3 font-medium text-neutral-400 data-[state=active]:text-primary-light data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-                    >
-                      Spot Trade
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <TabsContent value="swap">
-                  <SwapInterface />
-                </TabsContent>
-
-                <TabsContent value="trade">
-                  <SpotTradingInterface />
-                </TabsContent>
-              </Tabs>
+        <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-6">
+          <Tabs defaultValue="swap" className="space-y-6">
+            <div className="border-b border-neutral-700">
+              <TabsList className="border-b-0 bg-transparent">
+                <TabsTrigger 
+                  value="swap" 
+                  className="px-8 py-4 font-medium text-neutral-400 data-[state=active]:text-primary-light data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                >
+                  Token Swap
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="trade" 
+                  className="px-8 py-4 font-medium text-neutral-400 data-[state=active]:text-primary-light data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                >
+                  Spot Trading
+                </TabsTrigger>
+              </TabsList>
             </div>
 
-            {/* Recent Transactions */}
-            <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium">Recent Transactions</h3>
-                <Link href="/history">
-                  <Button variant="ghost" className="text-sm text-neutral-400 hover:text-white" size="sm">
-                    See All
-                  </Button>
-                </Link>
-              </div>
+            <TabsContent value="swap">
+              <SwapInterface />
+            </TabsContent>
 
-              <div className="space-y-3">
-                {transactions && transactions.length > 0 ? (
-                  transactions.slice(0, 3).map((transaction: any) => (
-                    <TransactionHistoryItem key={transaction.id} transaction={transaction} />
-                  ))
-                ) : address ? (
-                  <div className="text-center py-4 text-neutral-400">
-                    No transactions found
-                  </div>
-                ) : (
-                  <div className="text-center py-4 text-neutral-400">
-                    Connect your wallet to view transactions
-                  </div>
-                )}
+            <TabsContent value="trade">
+              <SpotTradingInterface />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Recent Transactions */}
+        <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold">Recent Transactions</h3>
+            <Link href="/history">
+              <Button variant="ghost" className="text-neutral-400 hover:text-white" size="sm">
+                View All
+              </Button>
+            </Link>
+          </div>
+
+          <div className="space-y-4">
+            {transactions && transactions.length > 0 ? (
+              transactions.slice(0, 3).map((transaction: any) => (
+                <TransactionHistoryItem key={transaction.id} transaction={transaction} />
+              ))
+            ) : address ? (
+              <div className="text-center py-8 text-neutral-400">
+                No transactions found
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-8 text-neutral-400">
+                Connect your wallet to view transactions
+              </div>
+            )}
           </div>
         </div>
       </div>
