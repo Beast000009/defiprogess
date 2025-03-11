@@ -28,12 +28,11 @@ const Dashboard = () => {
 
   return (
     <div>
-      {/* Main Features Area */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left Panel (Swap & Spot Trading) */}
-        <div className="xl:col-span-2 space-y-6">
+      <div className="space-y-6">
+        {/* Chart and Token List Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Price Chart */}
-          <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
+          <div className="md:col-span-1 bg-neutral-800 rounded-xl border border-neutral-700 p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Price Chart</h2>
               <span className="text-neutral-400">{selectedToken}/USD</span>
@@ -41,72 +40,8 @@ const Dashboard = () => {
             <PriceChart tokenSymbol={selectedToken} />
           </div>
 
-          {/* Swap and Trade Tabs */}
-          <div className="bg-neutral-800 rounded-xl border border-neutral-700">
-            <Tabs defaultValue="swap">
-              <div className="border-b border-neutral-700">
-                <TabsList className="border-b-0 bg-transparent">
-                  <TabsTrigger 
-                    value="swap" 
-                    className="px-6 py-3 font-medium text-neutral-400 data-[state=active]:text-primary-light data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-                  >
-                    Swap
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="trade" 
-                    className="px-6 py-3 font-medium text-neutral-400 data-[state=active]:text-primary-light data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-                  >
-                    Spot Trade
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <TabsContent value="swap">
-                <SwapInterface />
-              </TabsContent>
-
-              <TabsContent value="trade">
-                <SpotTradingInterface />
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          {/* Recent Transactions */}
-          <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium">Recent Transactions</h3>
-              <Link href="/history">
-                <Button variant="ghost" className="text-sm text-neutral-400 hover:text-white" size="sm">
-                  See All
-                </Button>
-              </Link>
-            </div>
-
-            <div className="space-y-3">
-              {transactions && transactions.length > 0 ? (
-                transactions.slice(0, 3).map((transaction: any) => (
-                  <TransactionHistoryItem key={transaction.id} transaction={transaction} />
-                ))
-              ) : address ? (
-                <div className="text-center py-4 text-neutral-400">
-                  No transactions found
-                </div>
-              ) : (
-                <div className="text-center py-4 text-neutral-400">
-                  Connect your wallet to view transactions
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Panel */}
-        <div className="space-y-6">
-          {/* Portfolio Overview */}
-          <PortfolioOverview />
-
           {/* Cryptocurrency List */}
-          <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
+          <div className="md:col-span-1 bg-neutral-800 rounded-xl border border-neutral-700 p-4">
             <h3 className="font-medium mb-4">Available Cryptocurrencies</h3>
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-2">
@@ -137,6 +72,69 @@ const Dashboard = () => {
                 ))}
               </div>
             </ScrollArea>
+          </div>
+        </div>
+
+        {/* Trading Interface */}
+        <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
+          <div className="space-y-6">
+            {/* Swap and Trade Tabs */}
+            <div className="bg-neutral-800 rounded-xl border border-neutral-700">
+              <Tabs defaultValue="swap">
+                <div className="border-b border-neutral-700">
+                  <TabsList className="border-b-0 bg-transparent">
+                    <TabsTrigger 
+                      value="swap" 
+                      className="px-6 py-3 font-medium text-neutral-400 data-[state=active]:text-primary-light data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                    >
+                      Swap
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="trade" 
+                      className="px-6 py-3 font-medium text-neutral-400 data-[state=active]:text-primary-light data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                    >
+                      Spot Trade
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="swap">
+                  <SwapInterface />
+                </TabsContent>
+
+                <TabsContent value="trade">
+                  <SpotTradingInterface />
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* Recent Transactions */}
+            <div className="bg-neutral-800 rounded-xl border border-neutral-700 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium">Recent Transactions</h3>
+                <Link href="/history">
+                  <Button variant="ghost" className="text-sm text-neutral-400 hover:text-white" size="sm">
+                    See All
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="space-y-3">
+                {transactions && transactions.length > 0 ? (
+                  transactions.slice(0, 3).map((transaction: any) => (
+                    <TransactionHistoryItem key={transaction.id} transaction={transaction} />
+                  ))
+                ) : address ? (
+                  <div className="text-center py-4 text-neutral-400">
+                    No transactions found
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-neutral-400">
+                    Connect your wallet to view transactions
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
